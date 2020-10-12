@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 import uuid
-from quart import Quart, request, jsonify, abort, redirect, url_for
+from quart import Quart, request, jsonify, abort, redirect, url_for, url_for, render_template
 
 
 app = Quart(__name__, static_folder='./static', static_url_path='')
@@ -37,6 +37,6 @@ async def file_upload_handler():
 
 
 @app.route('/')
-def index():
+async def index():
     """ Server route for the app's landing page """
-    return render_template('index.html')
+    return await render_template('index.html')
