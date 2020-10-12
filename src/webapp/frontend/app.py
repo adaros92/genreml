@@ -7,7 +7,7 @@ import uuid
 from quart import Quart, request, jsonify, abort, redirect, url_for, url_for, render_template
 
 
-app = Quart(__name__, static_folder='./static', static_url_path='')
+app = Quart(__name__, static_folder='./static', static_url_path='/static')
 event_loop = asyncio.get_event_loop()
 filestore_directory = "/filestore"
 

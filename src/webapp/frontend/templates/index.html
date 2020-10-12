@@ -16,10 +16,13 @@
         <br>
         <div class="row">
             <div class="col">
-                <p class="lead">
-                    <form id="file-upload" action="/uploadmultiple"  enctype="multipart/form-data" method="POST">
-                        <a href="#" class="btn btn-lg btn-secondary" onclick='(function(){(document.getElementById("selectMusicToUpload")).click();return false;})()'>Upload Audio Clip</a>
+                <p id="uploadMenuItem" class="lead">
+                    <a id="selectMusicButton" href="#" class="btn btn-lg btn-secondary" onclick='(document.getElementById("selectMusicToUpload")).click();' >Upload Audio Clip</a>
+                    <form id="file-upload" style="display:none" action="/uploadmultiple"  enctype="multipart/form-data" method="POST">
                         <input id="selectMusicToUpload" style="display:none" type="file" name="multiFileUploadForm" accept="audio/*" onchange='(document.getElementById("uploadMenuItem")).style.display="none";(document.getElementById("startUploadMenuItem")).style.display="block";(document.getElementById("uploadMusicButton")).click();' multiple/>
+                        <div id="startUploadMenuItem" style="display:none">
+                            <input id="uploadMusicButton" style="display:none" type="submit" value="Add to libary"/>
+                        </div>
                     </form>
                 </p>
             </div>
