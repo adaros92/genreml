@@ -36,7 +36,6 @@ async def file_upload_handler():
     return redirect(url_for('index'))
 
 
-@app.route('/')
-def index():
-    """ Server route for the app's landing page """
-    return render_template('index.html')
+@app.route("/", methods=['GET'])
+async def index():
+   return await app.send_static_file("index.html")
