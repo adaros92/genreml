@@ -43,7 +43,7 @@ def download_song (URL, filename, dl_dir="/content/audio/"):
 saves and returns black and white spectogram of audio file to dl_dir
 dl_dir defaults to content/img/ unless otherwise specified 
 '''
-def save_to_spectrogram( y, sr, sname, dl_dir="content/img/"):
+def save_to_spectrogram( y, sr, sname, dl_dir="spectrograms/"):
   # create mel scaled spectrogram from input .mp3 file
   mel_spect = librosa.feature.melspectrogram(
       y=y, sr=sr, n_fft=2048, hop_length=1024)
@@ -80,7 +80,7 @@ splits a wav file into n amount of s second clips
 n = clip_length / s
 
 '''
-def split_by_sec(s, loc, dl_dir="content/clips/"):
+def split_by_sec(s, loc, dl_dir="clips/"):
   song = AudioSegment.from_file(loc)
   for i in range(round(song.duration_seconds / s)):
     clip = song[i*s*1000:i*s*1000 + (s*1000)]
