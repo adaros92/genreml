@@ -107,7 +107,7 @@ outputs:
 file location
 '''
 def FMA_loc_get(dl_dir, sid)
-  sid = string(sid).zfill(6)
+  sid = str(sid).zfill(6)
   path = dl_dir + '/' +sid[0:3] +'/'+ sid + '.mp3'
   if os.path.isfile(path):
     return path
