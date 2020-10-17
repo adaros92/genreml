@@ -37,11 +37,14 @@ vim server.ssl.conf
 ```
 
 Place into file:
+
+
 subjectAltName = @alt_names
 
 [alt_names]
 DNS.1   = arch.local
 DNS.2   = server.arch.local
+
 
 Then do 
 
