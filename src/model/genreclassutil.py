@@ -40,8 +40,9 @@ def download_song (URL, filename, dl_dir="/content/audio/"):
 
 
 '''
-saves and returns black and white spectogram of audio file to dl_dir
-dl_dir defaults to content/img/ unless otherwise specified 
+saves black and white spectogram of audio file to dl_dir
+returns file location
+dl_dir defaults to content/img/ unless otherwise specified
 '''
 def save_to_spectrogram( y, sr, sname, dl_dir="spectrograms/"):
   # create mel scaled spectrogram from input .mp3 file
@@ -73,7 +74,8 @@ def save_to_spectrogram( y, sr, sname, dl_dir="spectrograms/"):
     os.makedirs(results_dir)
 
   fig.savefig(dl_dir + sname)
-
+  
+  return (dl_dir + sname + '.png')
 
 '''
 splits a wav file into n amount of s second clips
@@ -94,3 +96,20 @@ def split_by_sec(s, loc, dl_dir="clips/"):
       os.makedirs(results_dir)
 
     clip.export(dl_dir+clipname, format="wav")
+    
+
+'''
+returns audio file location of a given song id. Intended for use in the FMA dataset
+inputs: 
+ddir = data parent directory
+sid = song id
+outputs:
+file location
+'''
+def FMA_loc_get(dl_dir, sid)
+  path = dl_dir + '/' +sid[0:3] +'/'+ sid + '.mp3'
+  if os.path.isfile(path):
+    return path
+  else:
+    print('file at' + path + 'not found')
+
