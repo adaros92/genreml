@@ -106,7 +106,7 @@ sid = song id
 outputs:
 file location
 '''
-def FMA_loc_get(dl_dir, sid)
+def FMA_loc_get(sid, dl_dir)
   sid = str(sid).zfill(6)
   path = dl_dir + '/' +sid[0:3] +'/'+ sid + '.mp3'
   if os.path.isfile(path):
