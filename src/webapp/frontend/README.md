@@ -14,6 +14,26 @@ On a server instance deployment can be done by running the container with the co
 docker run -v /certs:/certs -p 443:443 -dit music:frontend
 ```
 
+# Create a fork/branch or another version in a different directory that does not do HTTPS
+
+To run with HTTPS:
+
+```shell
+hypercorn --certfile /certs/server.crt --keyfile /certs/server.key --bind 0.0.0.0:443 /opt/app:app
+```
+
+The /certs directory is from host to container via a binding mount so this when you use the docker run command.
+
+```shell
+docker run -v /home/server/certs:/certs -it container startup.sh
+```
+
+To run without HTTPS:
+
+```shell
+hypercorn --bind 0.0.0.0:80 /opt/app:app
+```
+
 # Generating SSL Certs for local HTTPS Testing
 
 This binds to server port 443 and the volume mount provides server certs. App expects a server.key and and server.crt to run. This command will make the /certs directory on the host available inside of the container at /certs. These defaults can be changed by changing the default run command in the Dockerfile.
