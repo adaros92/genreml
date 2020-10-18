@@ -43,34 +43,41 @@ It's recommended to use the Pycharm IDE for making contributions. You can get it
 
 We will try to follow PEP 8 whenever possible as documented here: https://www.python.org/dev/peps/pep-0008/. If you use Pycharm then you won't need to read this because it will highlight issues for you :). 
 
+### Running Audio Extraction and Processing Locally
+Install dependencies
+Mac:
+```
+brew install ffmpeg
+```
+
+Ubuntu/Debian:
+```
+sudo apt-get install ffmpeg
+```
+
+To install the package with Unix-based OS run the following in CS467-Project directory
+```
+bash install.sh
+```
+
+Test the installation by running the following in your terminal:
+```
+genreml
+```
+
+If the installation fails, ensure you have pip installed and that pip is correctly mapped (it may be pip3 on your system). If the genreml command
+doesn't work then run the following as the entry point to the CLI.
+```
+python3 -m model
+```
+
+Downloading audio files to your machine
+```
+genreml download -s "Black Dog" -a "Led Zeppelin"
+```
+
 ### Web-app Development
-The web-app portion of the project will be stored in src/webapp. It will follow a typical Flask directory structure as documented in https://flask.palletsprojects.com/en/1.1.x/patterns/packages/. The instructions below assume you're working on a Unix environment.
-
-To run a local server for testing do the following.
-
-1. Create virtual environment in the top-level CS467-Project directory if not already available
-```
-python3 -m venv webapp-env
-```
-2. Activate that environment or the one that's available and verify that your terminal displays the name of the environment in between parentheses before the cursor
-```
-source webapp-env/bin/activate
-```
-3. Go into src and run shell script, which will install Flask and the local app
-```
-cd src && bash run_webapp.sh
-```
-4. Verify that terminal says app is running on http://127.0.0.1:5000/
-5. Travel to http://127.0.0.1:5000/ or http://localhost:5000/ in the browser to view
-6. Terminate Flask server by hitting Ctrl + C
-7. Deactivate the virtual environment
-```
-deactivate
-```
-8. Delete the virtual environment if you want or leave it for reuse later
-```
-cd .. && rm -rf webapp-env
-```
+TBU
 
 To deploy app to production.
 
