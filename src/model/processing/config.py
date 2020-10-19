@@ -5,6 +5,8 @@
 class AudioConfig:
     # The format to store audio in
     AUDIO_FORMAT = 'wav'
+    # Prefix to save audio features to
+    FEATURE_DESTINATION = '/features/'
 
 
 class YoutubeExtractionConfig:

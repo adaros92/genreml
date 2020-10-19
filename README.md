@@ -71,9 +71,34 @@ doesn't work then run the following as the entry point to the CLI.
 python3 -m model
 ```
 
+Alternatively, you can travel to the src/model and run the following as the main entry point without installing the app
+```
+python3 __main__.py
+```
+
 Downloading audio files to your machine
 ```
 genreml download -s "Black Dog" -a "Led Zeppelin"
+```
+
+You can do the same without installing the app by traveling to the model package and running
+```
+python3 __main__.py download -s "Black Dog" -a "Led Zeppelin"
+```
+
+Processing audio files stored in some drive on your machine
+```
+genreml process -fp "/Users/adamsrosales/Documents/audio-clips/"
+```
+
+You can do the same without installing the app by traveling to the model package and running
+```
+python3 __main__.py process -fp "/Users/adamsrosales/Documents/audio-clips/"
+```
+
+The same can be run with a single file
+```
+genreml process -fp "/Users/adamsrosales/Documents/audio-clips/Yummy_Justin Bieber_clip.wav"
 ```
 
 ### Web-app Development
