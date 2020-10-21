@@ -1,0 +1,1 @@
+pip3 uninstall genreml && rm -rf ./src/*.egg*
