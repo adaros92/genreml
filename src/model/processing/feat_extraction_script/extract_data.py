@@ -8,6 +8,7 @@ from multiprocessing import Manager
 import warnings
 
 NUM_MFCC_COEFF = 20
+FMA_LARGE_DIR = '/home/jkinz/Music/fma_large'
 
 def get_columns():
     """ Defines labels for all columns for each data series storing audio data
@@ -96,7 +97,7 @@ def process_thread(ns, path, fname):
     return fname 
 
 def log_process(fname):
-    # apply_async callback to print feedback message in terminal
+    """ apply_async callback to print feedback message in terminal """
     print('{} complete'.format(fname))
 
 def process_file(file_id, src_path, output_path):
@@ -105,7 +106,7 @@ def process_file(file_id, src_path, output_path):
     
     param: string file_id: name of folder inside fma_large directory that is to be processed
     param: string src_path: path to fma_large directory
-    param: output_path: path where features.csv file is located
+    param: string output_path: path where features.csv file is located
     """
     file_id = str(file_id).zfill(3)
     path = '{0}/{1}'.format(src_path, file_id)
@@ -140,7 +141,6 @@ def main(dir_num):
 
     param: int dir_num: input from command line as folder number within fma_large directory
     """
-    FMA_LARGE_DIR = '/home/jkinz/Music/fma_large'
     src_directory = FMA_LARGE_DIR
     dest_path = '../../data/features.csv' 
     assert(int(dir_num) >= 0 and int(dir_num) <= 155)
