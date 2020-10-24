@@ -1,0 +1,164 @@
+genre_id,#tracks,parent,title,top_level
+38,38154,0,Experimental,38
+15,34413,0,Electronic,15
+12,32923,0,Rock,12
+1235,14938,0,Instrumental,1235
+10,13845,0,Pop,10
+17,12706,0,Folk,17
+25,9261,12,Punk,12
+1,8693,38,Avant-Garde,38
+21,8389,0,Hip-Hop,21
+32,7268,38,Noise,38
+107,7206,1235,Ambient,1235
+76,7144,10,Experimental Pop,10
+41,6110,38,Electroacoustic,38
+27,6041,12,Lo-Fi,12
+18,5913,1235,Soundtrack,1235
+42,5723,15,Ambient Electronic,15
+66,5432,12,Indie-Rock,12
+2,5271,0,International,2
+250,4261,38,Improv,38
+103,4162,17,Singer-Songwriter,17
+4,4126,0,Jazz,4
+5,4106,0,Classical,5
+85,3548,12,Garage,12
+236,3472,15,IDM,15
+30,3237,38,Field Recordings,38
+247,2957,38,Musique Concrete,38
+183,2809,15,Glitch,15
+47,2546,38,Drone,38
+58,2502,12,Psych-Rock,12
+45,2469,12,Loud-Rock,12
+33,2267,17,Psych-Folk,17
+70,2230,12,Industrial,12
+297,2208,15,Chip Music,15
+181,2140,15,Techno,15
+53,2071,45,Noise-Rock,12
+495,2061,15,Downtempo,15
+9,1987,0,Country,9
+26,1952,12,Post-Rock,12
+224,1916,38,Sound Collage,38
+20,1876,0,Spoken,20
+89,1858,25,Post-Punk,12
+362,1835,10,Synth Pop,10
+3,1752,0,Blues,3
+286,1751,15,Trip-Hop,15
+74,1531,4,Free-Jazz,4
+125,1511,38,Unclassifiable,38
+14,1499,0,Soul-RnB,14
+31,1498,12,Metal,12
+182,1482,15,House,15
+109,1419,25,Hardcore,12
+296,1414,15,Dance,15
+514,1414,38,Sound Art,38
+456,1392,38,Minimalism,38
+94,1289,17,Freak-Folk,17
+659,1239,5,Contemporary Classical,5
+240,1231,297,Chiptune,15
+811,1192,21,Hip-Hop Beats,21
+468,1144,15,Dubstep,15
+184,1013,15,Minimal Electronic,15
+111,1003,25,Power-Pop,12
+137,994,9,Americana,9
+6,914,38,Novelty,38
+79,880,2,Reggae - Dub,2
+8,868,0,Old-Time / Historic,8
+400,823,182,Chill-out,15
+98,795,12,Progressive,12
+22,774,38,Audio Collage,38
+19,773,14,Funk,14
+359,762,12,Shoegaze,12
+49,753,17,Free-Folk,17
+100,740,21,Alternative Hip-Hop,21
+542,735,21,Breakbeat,21
+13,730,0,Easy Listening,13
+130,727,2,Europe,2
+36,688,12,Krautrock,12
+186,682,38,Sound Poetry,38
+539,638,21,Rap,21
+322,630,5,Composed Music,5
+118,608,2,Balkan,2
+71,600,25,No Wave,12
+46,573,2,Latin America,2
+64,563,25,Electro-Punk,12
+65,518,20,Radio,20
+88,517,12,New Wave,12
+185,511,15,Breakcore - Hard,15
+337,500,15,Drum & Bass,15
+138,490,20,Spoken Weird,20
+113,484,26,Space-Rock,12
+314,482,12,Goth,12
+311,440,13,Lounge,13
+77,387,2,French,2
+11,367,14,Disco,14
+267,360,1235,New Age,1235
+538,338,18,Compilation,1235
+92,329,2,African,2
+439,314,31,Grindcore,12
+16,304,6,Sound Effects,38
+188,301,20,Poetry,20
+187,292,5,20th Century Classical,5
+97,291,4,Jazz: Out,4
+763,268,16,Holiday,38
+404,265,85,Surf,12
+695,258,15,Jungle,15
+90,251,53,Sludge,12
+171,234,2,Brazilian,2
+7,217,20,Comedy,20
+86,216,2,Indian,2
+443,216,5,Choral Music,5
+43,210,65,Radio Art,20
+580,202,21,Abstract Hip-Hop,21
+360,201,6,Kid-Friendly,38
+101,196,31,Death-Metal,12
+401,189,181,Bigbeat,15
+63,178,9,Bluegrass,9
+378,177,20,Spoken Word,20
+102,176,2,Middle East,2
+361,175,109,Thrash,12
+442,170,5,Chamber Music,5
+180,161,17,British Folk,17
+441,161,5,Opera,5
+167,152,31,Black-Metal,12
+169,128,9,Rockabilly,9
+166,122,65,Interview,20
+810,120,13,Nu-Jazz,13
+172,118,2,Asia-Far East,2
+440,116,12,Rock Opera,12
+619,115,130,Spanish,2
+504,114,2,Latin,2
+524,112,130,Romany (Gypsy),2
+81,110,92,Afrobeat,2
+906,107,4,Modern Jazz,4
+179,104,4,Big Band/Swing,4
+37,97,4,Jazz: Vocal,4
+602,94,79,Reggae - Dancehall,2
+83,84,21,Nerdcore,21
+651,79,9,Country & Western,9
+491,78,468,Skweee,15
+428,73,20,Radio Theater,20
+177,72,2,Celtic,2
+1193,72,763,Christmas,38
+502,67,46,Cumbia,2
+567,66,3,Gospel,3
+117,62,2,Polka,2
+1032,60,102,Turkish,2
+741,57,130,Klezmer,2
+693,56,21,Wonky,21
+170,47,13,Easy Listening: Vocal,13
+232,47,2,Flamenco,2
+214,40,92,North African,2
+1060,30,46,Tango,2
+189,26,65,Talk Radio,20
+1156,26,130,Fado,2
+444,25,5,Symphony,5
+176,23,2,Pacific,2
+465,18,20,Musical Theater,20
+174,17,86,South Indian Traditional,2
+808,12,46,Salsa,2
+374,9,20,Banter,20
+173,4,86,N. Indian Traditional,2
+493,4,651,Western Swing,9
+377,1,19,Deep Funk,14
+175,0,86,Bollywood,2
+178,0,4,Be-Bop,4

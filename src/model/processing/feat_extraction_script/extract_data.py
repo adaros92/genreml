@@ -82,7 +82,6 @@ def get_features(filepath, filename):
 
     return ds
 
-# get song data from each file in folder, then append to Datafram
 def process_thread(ns, path, fname):
     """ Called for each spawned process in thread pool to process each audio file
     Each song's data is stored in pandas data series, which is appended to ns Data Frame
