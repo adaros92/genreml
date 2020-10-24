@@ -130,3 +130,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+*.mp3
+src/model/data/fma_small/README.txt
+src/model/data/fma_small/checksums
