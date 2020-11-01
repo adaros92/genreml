@@ -9,7 +9,7 @@ import warnings
 
 from abc import ABC, abstractmethod
 
-from model.processing.config import FeatureExtractorConfig
+from genreml.model.processing.config import FeatureExtractorConfig
 
 
 class FeatureGenerator(ABC):
@@ -35,8 +35,7 @@ class SpectrogramGenerator(FeatureGenerator):
 
     @staticmethod
     def normalize_spectrogram(db_mel_spect):
-        return 255 * ((db_mel_spect - db_mel_spect.min()) /
-               (db_mel_spect.max() - db_mel_spect.min()))
+        return 255 * ((db_mel_spect - db_mel_spect.min()) / (db_mel_spect.max() - db_mel_spect.min()))
 
     @staticmethod
     def convert_pixels_to_8_bit_ints(spectrogram_img):
@@ -62,6 +61,10 @@ class SpectrogramGenerator(FeatureGenerator):
         fig.add_axes(ax)
         ax.imshow(spectrogram_img, aspect='auto', cmap='Greys')
         return fig
+
+    @staticmethod
+    def close_spectrogram(spectrogram_fig):
+        plt.close(spectrogram_fig)
 
     def generate(self):
         mel_spect = self.create_db_mel_spectrogram(self.audio_signal, self.sample_rate)
