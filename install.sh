@@ -1,1 +1,1 @@
-pip install -e ./src && source ~/.bash_profile
+pip3 install -e ./src && source ~/.bash_profile

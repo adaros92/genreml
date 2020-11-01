@@ -27,6 +27,15 @@ def directory_exists(directory_path):
     return os.path.isdir(directory_path)
 
 
+def file_exists(filepath: str):
+    """ Checks whether the given path to a file exists
+
+    :param filepath: a path to a file
+    :returns either True if the file exists or False otherwise
+    """
+    return os.path.isfile(filepath)
+
+
 def create_directory(directory_path):
     """ Creates a directory in the given path if it doesn't already exist and opens permissions for the application to
     run successfully

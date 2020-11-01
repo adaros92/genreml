@@ -4,9 +4,11 @@
 
 class AudioConfig:
     # The format to store audio in
-    AUDIO_FORMAT = 'wav'
+    AUDIO_FORMAT = 'mp3'
     # Prefix to save audio features to
     FEATURE_DESTINATION = '/features/'
+    # Checkpoint frequency in number of tracks processed
+    CHECKPOINT_FREQUENCY = 10
 
 
 class YoutubeExtractionConfig:
@@ -31,3 +33,11 @@ class SongExtractorConfig:
     SUPPORTED_SOURCES = ['youtube']
     # Where to save audio files to
     DESTINATION_FILEPATH = '/Documents/audio-clips/'
+
+
+class FeatureExtractorConfig:
+    # The Librosa features supported by the CLI
+    SUPPORTED_FEATURES = ['chroma_stft', 'rms', 'spec_cent', 'spec_bw', 'spec_rolloff', 'zcr', 'mfcc']
+    NUMBER_OF_MFCC_COLS = 20
+    # How to aggregate the features
+    FEATURE_AGGREGATION = ['mean', 'min', 'max', 'std']
