@@ -1,8 +1,8 @@
 import argparse
 import logging
 
-from model.processing import extraction, audio
-from model.utils import file_handling
+from model.processing import extraction, audio, config
+from model.utils import file_handling, string_parsing
 
 
 def setup_logger():
@@ -24,8 +24,15 @@ def parse_args():
     process - extract data from an audio clip stored in a given file path
     ''')
     parser.add_argument('-s', '--song_name', help='the name of the song to download')
-    parser.add_argument('-a', '--artist_name', help = 'the name of song\'s artist')
+    parser.add_argument('-a', '--artist_name', help='the name of song\'s artist')
     parser.add_argument('-fp', '--file_path', help='the file path of an audio clip or directory of clips to process')
+    parser.add_argument('-e', '--exclude_features', help='a list of feature names to exclude from processing')
+    parser.add_argument(
+        '-af', '--audio_format', default=config.AudioConfig.AUDIO_FORMAT, help='the format of the audio to process')
+    parser.add_argument(
+        '-cf', '--checkpoint_frequency', default=config.AudioConfig.CHECKPOINT_FREQUENCY,
+        help='how many tracks to process before saving features'
+    )
     return parser.parse_args()
 
 
@@ -38,6 +45,14 @@ def validate_args(args):
             'you must either pass in a path to an audio file to process or a path to a directory with audio files')
 
 
+def set_config(args):
+    """ Sets any config attributes provided through CLI """
+    # Set the audio format to use in processing
+    config.AudioConfig.AUDIO_FORMAT = args.audio_format
+    # Set the checkpointing frequency in number of tracks processed
+    config.AudioConfig.CHECKPOINT_FREQUENCY = args.checkpoint_frequency
+
+
 def run(args):
     """ Run the operation as specified via CLI argument """
     # Download clips
@@ -48,17 +63,20 @@ def run(args):
     elif args.operation == 'process':
         processor = audio.AudioFiles()
         feature_destination_path = file_handling.get_parent_directory(args.file_path)
-        processor.extract_features(args.file_path, feature_destination_path)
+        features_to_exclude = string_parsing.str_to_collection(args.exclude_features, set)
+        processor.extract_features(args.file_path, feature_destination_path, features_to_exclude=features_to_exclude)
 
 
 def main():
-    # Step 1: Set up logger
-    setup_logger()
-    # Step 2: parse the arguments passed in via the CLI
+    # Step 1: parse the arguments passed in via the CLI
     args = parse_args()
-    # Step 3: validates that the arguments passed in are correct; throws exception if not the case
+    # Step 2: validates that the arguments passed in are correct; throws exception if not the case
     validate_args(args)
-    # Step 4: run the operation
+    # Step 3: Set the config with any eligible inputs to update configs with
+    set_config(args)
+    # Step 4: Set up logger
+    setup_logger()
+    # Step 5: run the operation
     run(args)
 
 

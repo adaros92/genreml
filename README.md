@@ -76,7 +76,7 @@ Alternatively, you can travel to the src/model and run the following as the main
 python3 __main__.py
 ```
 
-Downloading audio files to your machine
+Downloading audio files to your machine (**This is no longer working due to youtube-dl takedown**)
 ```
 genreml download -s "Black Dog" -a "Led Zeppelin"
 ```
@@ -99,6 +99,17 @@ python3 __main__.py process -fp "/Users/adamsrosales/Documents/audio-clips/"
 The same can be run with a single file
 ```
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/Yummy_Justin Bieber_clip.wav"
+```
+
+To ignore certain features from the feature extraction process
+```
+# Ignore spectrogram generation
+genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -e spectrogram
+```
+
+To change audio file type
+```
+genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -af mp3
 ```
 
 ### Web-app Development
