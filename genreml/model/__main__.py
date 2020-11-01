@@ -1,15 +1,8 @@
 import argparse
 import logging
 
-from model.processing import extraction, audio, config
-from model.utils import file_handling, string_parsing
-
-
-def setup_logger():
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S')
+from genreml.model.processing import extraction, audio, config
+from genreml.model.utils import string_parsing, file_handling, logger
 
 
 def parse_args():
@@ -75,7 +68,7 @@ def main():
     # Step 3: Set the config with any eligible inputs to update configs with
     set_config(args)
     # Step 4: Set up logger
-    setup_logger()
+    logger.setup_logger()
     # Step 5: run the operation
     run(args)
 

@@ -43,7 +43,7 @@ It's recommended to use the Pycharm IDE for making contributions. You can get it
 
 We will try to follow PEP 8 whenever possible as documented here: https://www.python.org/dev/peps/pep-0008/. If you use Pycharm then you won't need to read this because it will highlight issues for you :). 
 
-### Running Audio Extraction and Processing Locally
+### Installing Genreml
 Install dependencies
 Mac:
 ```
@@ -55,7 +55,14 @@ Ubuntu/Debian:
 sudo apt-get install ffmpeg
 ```
 
-To install the package with Unix-based OS run the following in CS467-Project directory
+To install the package from Pypi as documented in https://pypi.org/project/genreml run:
+```
+pip3 install genreml
+or
+pip install genreml
+```
+
+To install the package from the repo with Unix-based OS run the following in CS467-Project directory
 ```
 bash install.sh
 ```
@@ -75,6 +82,10 @@ Alternatively, you can travel to the src/model and run the following as the main
 ```
 python3 __main__.py
 ```
+
+# Running the CLI
+
+**The youtube functionality is not currently working due to youtube-dl takedown**
 
 Downloading audio files to your machine (**This is no longer working due to youtube-dl takedown**)
 ```
@@ -112,12 +123,35 @@ To change audio file type
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -af mp3
 ```
 
-### Web-app Development
-TBU
+# Using genreml as a Package in Python
 
-To deploy app to production.
+You can import genreml after a successful installation like any Python package
+```
+import genreml
+```
 
-TBU
+See genreml/model/__main__ for the hooks into the genreml functionality that the CLI has. Some examples below.
 
-### Model Development
-TBU
+Run feature extraction on sample FMA MP3s packaged with application.
+
+```
+from genreml.model.processing import audio
+
+audio_files = audio.AudioFiles()
+audio_files.extract_sample_fma_features(output_to_file=False)
+```
+
+Convert features to Pandas data frame
+```
+df = audio_files.to_df()
+```
+
+Run feature extraction on a directory or filepath of your choice
+```
+audio_files.extract_features("[YOUR_FILE_PATH]", output_to_file=False)
+```
+
+Run feature extraction on a directory or filepath of your choice but export results to a destination filepath
+```
+audio_files.extract_features("[YOUR_FILE_PATH]", destination_filepath="[YOUR_DESTINATION_PATH]")
+```
