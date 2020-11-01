@@ -1,6 +1,7 @@
+import pathlib
 import sys
 
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.test import test as TestCommand
 
 
@@ -23,17 +24,33 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
+# The directory containing this file
+HERE = pathlib.Path(__file__).parent
+
+# The text of the README file
+README = (HERE / "README.md").read_text()
+
+
 setup(
     description='Data extraction and processing for genre prediction using ML',
-    version='0.1.0',
+    long_description=README,
+    long_description_content_type="text/markdown",
+    url="https://github.com/adaros92/CS467-Project",
+    version='0.2.2',
     install_requires=['requests', 'pandas', 'numpy', 'tabulate', 'ffmpeg', 'pydub', 'librosa'],
     tests_require=['pytest', 'pytest-cov'],
+    license="MIT",
+    classifiers=[
+            "License :: OSI Approved :: MIT License",
+            "Programming Language :: Python :: 3",
+            "Programming Language :: Python :: 3.7",
+        ],
     cmdclass={'test': PyTest},
-    packages=['genreml'],
+    packages=find_packages(exclude=("test",)),
     name='genreml',
     python_requires='>=3.5',
     package_data={
-        'fma_data': ['*']
+        'genreml': ['fma_data/*.mp3']
     },
     entry_points={
         'console_scripts': [

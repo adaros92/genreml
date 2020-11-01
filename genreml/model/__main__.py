@@ -1,5 +1,4 @@
 import argparse
-import logging
 
 from genreml.model.processing import extraction, audio, config
 from genreml.model.utils import string_parsing, file_handling, logger
