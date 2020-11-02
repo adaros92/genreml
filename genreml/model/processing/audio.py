@@ -110,6 +110,8 @@ class AudioFiles(dict):
         :param set features_to_exclude: a collection of feature names to exclude from the final result
         :param bool output_to_file: whether to output results to a particular file or not
         """
+        if not features_to_exclude:
+            features_to_exclude = set()
         try:
             if output_to_file and 'spectrogram' not in features_to_exclude:
                 audio_file.to_spectrogram(destination_filepath.replace(" ", ""))
