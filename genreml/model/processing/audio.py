@@ -154,11 +154,11 @@ class AudioFiles(dict):
             logging.info(
                 "writing feature data frame containing {0} records to {1}".format(record_count, csv_filepath))
             df.to_csv(csv_filepath, float_format='%.{}e'.format(10), index=None, mode='w')
-        return df
+        return df, csv_filepath
 
     def _checkpoint_feature_extraction(self, destination_filepath, clear_features=True):
         logging.info("checkpointing progress to {0}".format(destination_filepath))
-        _ = self.to_csv(destination_filepath)
+        _, _ = self.to_csv(destination_filepath)
         self.features_saved.extend(self.features)
         if clear_features:
             self.features = []
