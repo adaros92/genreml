@@ -9,6 +9,9 @@ class AudioConfig:
     FEATURE_DESTINATION = '/features/'
     # Checkpoint frequency in number of tracks processed
     CHECKPOINT_FREQUENCY = 10
+    # What cmap to use when saving visual features
+    # Refer to https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+    CMAP = 'Greys'
 
 
 class YoutubeExtractionConfig:
@@ -41,3 +44,5 @@ class FeatureExtractorConfig:
     NUMBER_OF_MFCC_COLS = 20
     # How to aggregate the features
     FEATURE_AGGREGATION = ['mean', 'min', 'max', 'std']
+    N_FFT = 2048
+    HOP_LENGTH = 1024

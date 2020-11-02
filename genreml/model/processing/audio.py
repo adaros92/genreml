@@ -9,14 +9,14 @@ import pandas as pd
 import glob
 import json
 
-from genreml.model.processing.audio_features import SpectrogramGenerator, LibrosaFeatureGenerator
+from genreml.model.processing.audio_features import SpectrogramGenerator, LibrosaFeatureGenerator, WavePlotGenerator
 from genreml.model.processing.config import AudioConfig
 from genreml.model.utils import file_handling
 
 
 class AudioFile(object):
 
-    def __init__(self, file_path, audio_signal, sample_rate):
+    def __init__(self, file_path: str, audio_signal, sample_rate):
         """ Instantiates an AudioFile object that collects various attributes related to an audio file and exposes
         methods to extract features from that file
         """
@@ -26,38 +26,61 @@ class AudioFile(object):
         self.audio_signal = audio_signal
         self.sample_rate = sample_rate
 
-    def to_spectrogram(self, destination_filepath, spec_generator=None):
-        """ Extract spectrogram from the audio data and save to the destination path
+    def _get_figure_filepath(self, destination_filepath, figure_type):
+        return "{0}{1}_{2}".format(
+            destination_filepath, figure_type, self.file_name.replace(self.audio_type, ""))
+
+    def _save_figure(self, generator, figure, destination_filepath, figure_type):
+        path = self._get_figure_filepath(destination_filepath, figure_type)
+        logging.info("saving {0} to {1}".format(figure_type, path))
+        figure.savefig(path)
+        generator.close_img(figure)
+        return path + ".png"
+
+    def to_melspectrogram(self, destination_filepath: str, spec_generator=None, cmap: str = None):
+        """ Extract melspectrogram from the audio data and save to the destination path
 
         :param string destination_filepath: the file path to save the spectrogram to
         :param model.processing.audio_features.SpectrogramGenerator spec_generator: option. spectrogram generator to use
+        :param cmap: https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+        :returns the full path location of the saved melspetrogram image
         """
-        logging.info("generating spectrogram for {0}".format(self.file_name))
+        logging.info("generating mel spectrogram for {0}".format(self.file_name))
         if not spec_generator:
             spec_generator = SpectrogramGenerator(self.audio_signal, self.sample_rate)
-        full_path = "{0}spectrogram_{1}".format(
-            destination_filepath, self.file_name.replace(self.audio_type, ""))
-        spectrogram = spec_generator.generate()
-        spectrogram.savefig(full_path)
-        logging.info("saving spectrogram to {0}".format(full_path))
-        spec_generator.close_spectrogram(spectrogram)
-        return full_path + ".png"
+        spectrogram = spec_generator.generate(cmap=cmap)
+        full_path = self._save_figure(spec_generator, spectrogram, destination_filepath, "melspectrogram")
+        return full_path
+
+    def to_waveplot(self, destination_filepath: str, waveplot_generator=None):
+        logging.info("generating waveplot for {0}".format(self.file_name))
+        if not waveplot_generator:
+            waveplot_generator = WavePlotGenerator(self.audio_signal, self.sample_rate)
+        waveplot = waveplot_generator.generate()
+        full_path = self._save_figure(waveplot_generator, waveplot, destination_filepath, "waveplot")
+        return full_path
+
+    def extract_visual_features(self, destination_filepath: str, cmap: str = None, exclusion_set: set = None):
+        if "spectrogram" not in exclusion_set:
+            self.to_melspectrogram(destination_filepath, cmap=cmap)
+        if "waveplot" not in exclusion_set:
+            self.to_waveplot(destination_filepath)
 
     def extract_features(self,
                          aggregate_features: bool = True,
-                         exclude_features: set = None,
+                         exclusion_set: set = None,
                          feature_generator: LibrosaFeatureGenerator = None):
         """ Extract librosa features from the audio data
 
         :param aggregate_features - whether to aggregate the features extracted or not
-        :param exclude_features - an optional set of feature names to exclude from the feature generation
+        :param exclusion_set - an optional set of feature names to exclude from the feature generation
         :param feature_generator - an optional generator to use for generating the features
         :returns a dictionary containing the feature names as keys and the data as values
         """
         logging.info("generating librosa features for {0}".format(self.file_name))
         if not feature_generator:
             feature_generator = LibrosaFeatureGenerator(
-                self.audio_signal, self.sample_rate, aggregate_features, exclude_features)
+                self.audio_signal, self.sample_rate, aggregate_features, exclusion_set)
         # Extract features
         features = feature_generator.generate()
         # Append the identifiers for the current audio file to the feature object
@@ -113,9 +136,11 @@ class AudioFiles(dict):
         if not features_to_exclude:
             features_to_exclude = set()
         try:
-            if output_to_file and 'spectrogram' not in features_to_exclude:
-                audio_file.to_spectrogram(destination_filepath.replace(" ", ""))
-            self.features.append(audio_file.extract_features(exclude_features=features_to_exclude))
+            if output_to_file:
+                destination_filepath = destination_filepath.replace(" ", "")
+                audio_file.extract_visual_features(
+                    destination_filepath, cmap=AudioConfig.CMAP, exclusion_set=features_to_exclude)
+            self.features.append(audio_file.extract_features(exclusion_set=features_to_exclude))
         except Exception as e:
             logging.warning("failed to extract features from {0}".format(file_location))
             logging.warning(e)
@@ -154,11 +179,11 @@ class AudioFiles(dict):
             logging.info(
                 "writing feature data frame containing {0} records to {1}".format(record_count, csv_filepath))
             df.to_csv(csv_filepath, float_format='%.{}e'.format(10), index=None, mode='w')
-        return df
+        return df, csv_filepath
 
     def _checkpoint_feature_extraction(self, destination_filepath, clear_features=True):
         logging.info("checkpointing progress to {0}".format(destination_filepath))
-        _ = self.to_csv(destination_filepath)
+        _, _ = self.to_csv(destination_filepath)
         self.features_saved.extend(self.features)
         if clear_features:
             self.features = []

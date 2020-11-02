@@ -6,3 +6,4 @@
   python3 setup.py test && pip3 install -e .
 }
 source ~/.bash_profile
+rm -rf ./test_dir*

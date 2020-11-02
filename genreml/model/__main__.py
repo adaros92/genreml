@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument(
         '-af', '--audio_format', default=config.AudioConfig.AUDIO_FORMAT, help='the format of the audio to process')
     parser.add_argument(
+        '-cmap', '--cmap', default=config.AudioConfig.CMAP, help='the CMAP to use (example: greys or none for color)')
+    parser.add_argument(
         '-cf', '--checkpoint_frequency', default=config.AudioConfig.CHECKPOINT_FREQUENCY,
         help='how many tracks to process before saving features'
     )
@@ -49,6 +51,11 @@ def set_config(args):
     config.AudioConfig.AUDIO_FORMAT = args.audio_format
     # Set the checkpointing frequency in number of tracks processed
     config.AudioConfig.CHECKPOINT_FREQUENCY = args.checkpoint_frequency
+    # Set whether to use greyscale or something else as color map in audio feature figures saved
+    cmap = args.cmap
+    if cmap.lower() == "none":
+        cmap = None
+    config.AudioConfig.CMAP = cmap
 
 
 def run(args):
