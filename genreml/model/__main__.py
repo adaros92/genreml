@@ -1,15 +1,7 @@
 import argparse
-import logging
 
-from model.processing import extraction, audio, config
-from model.utils import file_handling, string_parsing
-
-
-def setup_logger():
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S')
+from genreml.model.processing import extraction, audio, config
+from genreml.model.utils import string_parsing, file_handling, logger
 
 
 def parse_args():
@@ -26,6 +18,8 @@ def parse_args():
     parser.add_argument('-s', '--song_name', help='the name of the song to download')
     parser.add_argument('-a', '--artist_name', help='the name of song\'s artist')
     parser.add_argument('-fp', '--file_path', help='the file path of an audio clip or directory of clips to process')
+    parser.add_argument('-ex', '--example', action='store_true', help='whether to run an example of feature extraction')
+    parser.add_argument('-dp', '--destination_path', help='where to store the results of feature processing')
     parser.add_argument('-e', '--exclude_features', help='a list of feature names to exclude from processing')
     parser.add_argument(
         '-af', '--audio_format', default=config.AudioConfig.AUDIO_FORMAT, help='the format of the audio to process')
@@ -40,9 +34,13 @@ def validate_args(args):
     """ Validates the arguments passed in via the CLI """
     if args.operation == 'download' and not (args.song_name and args.artist_name):
         raise RuntimeError('both the song name and artist must be provided to download a clip')
-    elif args.operation == 'process' and not args.file_path:
+    elif args.operation == 'process' and not (args.file_path or args.example):
         raise RuntimeError(
             'you must either pass in a path to an audio file to process or a path to a directory with audio files')
+    elif args.operation == 'process' and args.example and not args.destination_path:
+        raise RuntimeError(
+            'if running an example feature extraction you must provide a destination path to save the results in'
+        )
 
 
 def set_config(args):
@@ -62,9 +60,20 @@ def run(args):
     # Extract features from clips
     elif args.operation == 'process':
         processor = audio.AudioFiles()
-        feature_destination_path = file_handling.get_parent_directory(args.file_path)
         features_to_exclude = string_parsing.str_to_collection(args.exclude_features, set)
-        processor.extract_features(args.file_path, feature_destination_path, features_to_exclude=features_to_exclude)
+        # Define the destination path
+        if not args.destination_path and not args.example:
+            # Use same path as input file_path if a -dp is not provided
+            feature_destination_path = file_handling.get_parent_directory(args.file_path)
+        else:
+            # Otherwise use the path provided via -dp; if running example, always require a destination path
+            feature_destination_path = args.destination_path
+        # Run the feature extraction
+        if args.example:
+            processor.extract_sample_fma_features(destination_filepath=feature_destination_path)
+        else:
+            processor.extract_features(args.file_path, feature_destination_path,
+                                       features_to_exclude=features_to_exclude)
 
 
 def main():
@@ -75,7 +84,7 @@ def main():
     # Step 3: Set the config with any eligible inputs to update configs with
     set_config(args)
     # Step 4: Set up logger
-    setup_logger()
+    logger.setup_logger()
     # Step 5: run the operation
     run(args)
 

@@ -8,8 +8,8 @@ import requests
 import logging
 import re
 
-from model.processing.config import YoutubeExtractionConfig, SongExtractorConfig, AudioConfig
-from model.utils import file_handling
+from genreml.model.processing.config import YoutubeExtractionConfig, SongExtractorConfig, AudioConfig
+from genreml.model.utils import file_handling
 
 
 class Request(object):
