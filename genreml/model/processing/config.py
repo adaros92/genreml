@@ -9,9 +9,15 @@ class AudioConfig:
     FEATURE_DESTINATION = '/features/'
     # Checkpoint frequency in number of tracks processed
     CHECKPOINT_FREQUENCY = 10
+
+
+class DisplayConfig:
     # What cmap to use when saving visual features
     # Refer to https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
-    CMAP = 'Greys'
+    CMAP = "Greys"
+    # Defines the size of the figures created by display
+    FIGSIZE_WIDTH = 10
+    FIGSIZE_HEIGHT = 10
 
 
 class YoutubeExtractionConfig:

@@ -53,7 +53,8 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-.coverage
+feature_data_*
+
 
 # Translations
 *.mo
@@ -131,3 +132,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+features

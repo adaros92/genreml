@@ -10,7 +10,8 @@ import warnings
 
 from abc import ABC, abstractmethod
 
-from genreml.model.processing.config import FeatureExtractorConfig
+from genreml.model.processing.config import FeatureExtractorConfig, DisplayConfig
+from genreml.model.processing.display import VisualDataMixin
 
 
 class FeatureGenerator(ABC):
@@ -29,51 +30,7 @@ class FeatureGenerator(ABC):
         pass
 
 
-class VisualFeaturesMixin(object):
-    """ Defines common functionality for visual feature generation """
-
-    @staticmethod
-    def normalize(visual_data: np.array) -> np.array:
-        return 255 * ((visual_data - visual_data.min()) /
-                      (visual_data.max() - visual_data.min()))
-
-    @staticmethod
-    def convert_pixels_to_8_bits(visual_data: np.array) -> np.array:
-        return visual_data.astype(np.uint8)
-
-    @staticmethod
-    def flip_and_invert(visual_data: np.array) -> np.array:
-        flipped_img = np.flip(visual_data, axis=0)
-        return 255 - flipped_img
-
-    @staticmethod
-    def create_display_figure(frameon: bool = False, display_axes: bool = False,
-                              x_axis_name: str = None, y_axis_name: str = None) -> tuple:
-        fig = plt.figure(frameon=frameon)
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        if not display_axes:
-            ax.set_axis_off()
-        else:
-            ax.set(xlabel=x_axis_name, ylabel=y_axis_name)
-        fig.add_axes(ax)
-        return fig, ax
-
-    @staticmethod
-    def display_data(
-            visual_data: np.array, frameon: bool = False, cmap: str = None,
-            display_axes: bool = False, x_axis_name: str = None, y_axis_name: str = None) -> plt.figure:
-        """ Displays the given data in a matplotlib figure and returns the figure object """
-        fig, ax = VisualFeaturesMixin.create_display_figure(frameon, display_axes, x_axis_name, y_axis_name)
-        ax.imshow(visual_data, aspect='auto', cmap=cmap)
-        return fig
-
-    @staticmethod
-    def close_img(fig: plt.figure) -> None:
-        """ Closes a matplotlib figure """
-        plt.close(fig)
-
-
-class SpectrogramGenerator(FeatureGenerator, VisualFeaturesMixin):
+class SpectrogramGenerator(FeatureGenerator, VisualDataMixin):
     """ Generates a spectrogram image from audio data
 
     https://librosa.org/doc/0.7.2/generated/librosa.feature.melspectrogram.html
@@ -91,22 +48,41 @@ class SpectrogramGenerator(FeatureGenerator, VisualFeaturesMixin):
 
         :param audio_signal: an audio time-series
         :param sample_rate: the sampling rate of the audio time-series
-        :returns a numpy array containing the data to plot as a spectrogram
+        :returns a numpy array containing the data to plot as a melspectrogram
         """
         mel_spect = librosa.feature.melspectrogram(
             y=audio_signal, sr=sample_rate, n_fft=self.config.N_FFT, hop_length=self.config.HOP_LENGTH
         )
         return librosa.power_to_db(mel_spect)
 
-    def _create_spectrogram_data(self, audio_signal: np.ndarray) -> np.ndarray:
+    def _create_db_spectrogram_data(self, audio_signal: np.ndarray) -> np.ndarray:
+        """ Creates the data for a decibel spectrogram using librosa
+
+        :param audio_signal: an audio time-series
+        :returns a numpy array containing the data to plot as a spectrogram
+        """
         spectrogram_data = np.abs(
             librosa.stft(y=audio_signal, n_fft=self.config.N_FFT, hop_length=self.config.HOP_LENGTH))
         return librosa.amplitude_to_db(spectrogram_data, ref=np.max)
 
-    def generate(self, cmap: str = None) -> plt.figure:
+    def _create_chromagram_data(self, audio_signal: np.ndarray, sample_rate: np.ndarray) -> np.ndarray:
+        """ Generates the data from a chromagram using librosa
+
+        :param audio_signal: an audio time-series
+        :param sample_rate: the sampling rate of the audio time-series
+        :returns a numpy array containing the data to plot as a chromagram
+        """
+        chromagram = librosa.feature.chroma_stft(audio_signal, sample_rate, hop_length=self.config.HOP_LENGTH)
+        return chromagram
+
+    def generate(self, cmap: str = None,
+                 figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
+                 ) -> plt.figure:
         """ Generates a spectrogram by calling the different component methods of this object
 
         :param cmap: https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+        :param figure_width: the spectrogram width in inches
+        :param figure_height: the spectrogram height in inches
         :returns a matplotlib.pyplot.figure object visualizing the spectrogram data
         """
         if self.spectrogram_type == "melspectrogram":
@@ -114,13 +90,17 @@ class SpectrogramGenerator(FeatureGenerator, VisualFeaturesMixin):
             norm_mel_spect = self.normalize(mel_spect)
             eight_bit_spectrogram = self.convert_pixels_to_8_bits(norm_mel_spect)
             transformed_spectrogram = self.flip_and_invert(eight_bit_spectrogram)
+        elif self.spectrogram_type == "chromagram":
+            chromagram = self._create_chromagram_data(self.audio_signal, self.sample_rate)
+            transformed_spectrogram = chromagram
         else:
-            spect = self._create_spectrogram_data(self.audio_signal)
+            spect = self._create_db_spectrogram_data(self.audio_signal)
             transformed_spectrogram = spect
-        return self.display_data(transformed_spectrogram, cmap=cmap)
+        return self.display_data(
+            transformed_spectrogram, cmap=cmap, figure_width=figure_width, figure_height=figure_height)
 
 
-class WavePlotGenerator(FeatureGenerator, VisualFeaturesMixin):
+class WavePlotGenerator(FeatureGenerator, VisualDataMixin):
     """ Generates a waveplot image from audio data
 
     https://librosa.org/doc/0.7.2/generated/librosa.feature.melspectrogram.html
@@ -130,13 +110,21 @@ class WavePlotGenerator(FeatureGenerator, VisualFeaturesMixin):
     def __init__(self, audio_signal: np.ndarray, sample_rate: np.ndarray, config=FeatureExtractorConfig):
         super().__init__(audio_signal, sample_rate, features_to_exclude=None, config=config)
 
-    def generate(self) -> plt.figure:
+    def generate(self, cmap: str = None,
+                 figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
+                 figure_height: float = DisplayConfig.FIGSIZE_HEIGHT) -> plt.figure:
         """ Generates a wave plot using librosa
+
+        :param cmap: https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+        :param figure_width: the waveplot width in inches
+        :param figure_height: the waveplot height in inches
 
         :returns a matplotlib.pyplot.figure object visualizing the wave plot data
         """
         # TODO: this is not adding axes for some reason
-        fig, ax = self.create_display_figure(frameon=True, display_axes=True, x_axis_name="Time")
+        fig, ax = self.create_display_figure(
+            frameon=True, display_axes=True, x_axis_name="Time",
+            figure_width=figure_width, figure_height=figure_height)
         librosa.display.waveplot(self.audio_signal, self.sample_rate)
         return fig
 

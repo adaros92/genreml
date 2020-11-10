@@ -24,7 +24,13 @@ def parse_args():
     parser.add_argument(
         '-af', '--audio_format', default=config.AudioConfig.AUDIO_FORMAT, help='the format of the audio to process')
     parser.add_argument(
-        '-cmap', '--cmap', default=config.AudioConfig.CMAP, help='the CMAP to use (example: greys or none for color)')
+        '-cmap', '--cmap', default=config.DisplayConfig.CMAP,
+        help='matplotlib colormap https://matplotlib.org/3.1.0/tutorials/colors/colormaps.html ("None" = default color)'
+    )
+    parser.add_argument(
+        '-fw', '--figure_width', default=config.DisplayConfig.FIGSIZE_WIDTH, help='the width of the figures created')
+    parser.add_argument(
+        '-fh', '--figure_height', default=config.DisplayConfig.FIGSIZE_HEIGHT, help='the height of the figures created')
     parser.add_argument(
         '-cf', '--checkpoint_frequency', default=config.AudioConfig.CHECKPOINT_FREQUENCY,
         help='how many tracks to process before saving features'
@@ -51,11 +57,6 @@ def set_config(args):
     config.AudioConfig.AUDIO_FORMAT = args.audio_format
     # Set the checkpointing frequency in number of tracks processed
     config.AudioConfig.CHECKPOINT_FREQUENCY = args.checkpoint_frequency
-    # Set whether to use greyscale or something else as color map in audio feature figures saved
-    cmap = args.cmap
-    if cmap.lower() == "none":
-        cmap = None
-    config.AudioConfig.CMAP = cmap
 
 
 def run(args):
@@ -68,6 +69,9 @@ def run(args):
     elif args.operation == 'process':
         processor = audio.AudioFiles()
         features_to_exclude = string_parsing.str_to_collection(args.exclude_features, set)
+        cmap = args.cmap
+        if cmap.lower() == "none":
+            cmap = None
         # Define the destination path
         if not args.destination_path and not args.example:
             # Use same path as input file_path if a -dp is not provided
@@ -77,10 +81,15 @@ def run(args):
             feature_destination_path = args.destination_path
         # Run the feature extraction
         if args.example:
-            processor.extract_sample_fma_features(destination_filepath=feature_destination_path)
+            processor.extract_sample_fma_features(
+                destination_filepath=feature_destination_path, audio_format=args.audio_format)
         else:
             processor.extract_features(args.file_path, feature_destination_path,
-                                       features_to_exclude=features_to_exclude)
+                                       features_to_exclude=features_to_exclude,
+                                       cmap=cmap, figure_width=float(args.figure_width),
+                                       figure_height=float(args.figure_height),
+                                       audio_format=args.audio_format
+                                       )
 
 
 def main():
