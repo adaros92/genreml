@@ -123,6 +123,11 @@ To change audio file type
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -af mp3
 ```
 
+To change export colot images and change image size to X in wide by Y in high
+```
+genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -cmap None -fw 15.0 -fh 5.0
+```
+
 # Using genreml as a Package in Python
 
 You can import genreml after a successful installation like any Python package
@@ -154,4 +159,17 @@ audio_files.extract_features("[YOUR_FILE_PATH]", output_to_file=False)
 Run feature extraction on a directory or filepath of your choice but export results to a destination filepath
 ```
 audio_files.extract_features("[YOUR_FILE_PATH]", destination_filepath="[YOUR_DESTINATION_PATH]")
+```
+
+Change color of images generated
+```
+audio_files.extract_features("[YOUR_FILE_PATH]", destination_filepath="[YOUR_DESTINATION_PATH]", cmap=None)
+```
+
+Change size of images generated to 15 by 5 inches
+```
+audio_files.extract_features(
+    "[YOUR_FILE_PATH]", destination_filepath="[YOUR_DESTINATION_PATH]",
+    figure_width=15, figure_height=5
+)
 ```
