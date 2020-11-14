@@ -11,6 +11,15 @@ class AudioConfig:
     CHECKPOINT_FREQUENCY = 10
 
 
+class DisplayConfig:
+    # What cmap to use when saving visual features
+    # Refer to https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+    CMAP = "Greys"
+    # Defines the size of the figures created by display
+    FIGSIZE_WIDTH = 10
+    FIGSIZE_HEIGHT = 10
+
+
 class YoutubeExtractionConfig:
     # URL to make request to for audio results
     SEARCH_URL = 'https://www.youtube.com/results'
@@ -41,3 +50,5 @@ class FeatureExtractorConfig:
     NUMBER_OF_MFCC_COLS = 20
     # How to aggregate the features
     FEATURE_AGGREGATION = ['mean', 'min', 'max', 'std']
+    N_FFT = 2048
+    HOP_LENGTH = 1024
