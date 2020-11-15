@@ -121,25 +121,26 @@ class AudioFile(object):
     def extract_features(self,
                          aggregate_features: bool = True,
                          exclusion_set: set = None,
-                         feature_generator: LibrosaFeatureGenerator = None):
+                         feature_generator: LibrosaFeatureGenerator = None) -> tuple:
         """ Extract librosa features from the audio data
 
         :param aggregate_features - whether to aggregate the features extracted or not
         :param exclusion_set - an optional set of feature names to exclude from the feature generation
         :param feature_generator - an optional generator to use for generating the features
         :returns a dictionary containing the feature names as keys and the data as values
+            and a list of feature names in order of processing
         """
         logging.info("generating librosa features for {0}".format(self.file_name))
         if not feature_generator:
             feature_generator = LibrosaFeatureGenerator(
                 self.audio_signal, self.sample_rate, aggregate_features, exclusion_set)
         # Extract features
-        features = feature_generator.generate()
+        features, feature_names = feature_generator.generate()
         # Append the identifiers for the current audio file to the feature object
         features['file_name'] = self.file_name
         features['file_path'] = self.file_path
         logging.info("generated {0} features for {1}".format(len(features), self.file_name))
-        return features
+        return features, feature_names
 
     def __repr__(self):
         return "Audio file of type {0} loaded from {1}".format(self.audio_type, self.file_path)
@@ -157,6 +158,7 @@ class AudioFiles(dict):
         self.bad_files_loaded = None
         self.bad_files_extracted = None
         self.features = []
+        self.feature_names = []
         self.features_saved = []
 
     def _load_file(self, file_location):
@@ -197,7 +199,9 @@ class AudioFiles(dict):
                     destination_filepath, cmap=cmap, exclusion_set=features_to_exclude,
                     figure_width=figure_width, figure_height=figure_height
                 )
-            self.features.append(audio_file.extract_features(exclusion_set=features_to_exclude))
+            feature_dict, feature_names_list = audio_file.extract_features(exclusion_set=features_to_exclude)
+            self.features.append(feature_dict)
+            self.feature_names.append(feature_names_list)
         except Exception as e:
             logging.warning("failed to extract features from {0}".format(file_location))
             logging.warning(e)
