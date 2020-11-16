@@ -205,16 +205,16 @@ class LibrosaFeatureGenerator(FeatureGenerator):
         aggregated_features = {}
         aggregation_functions = {'mean': np.mean, 'min': np.min, 'max': np.max, 'std': np.std}
         feature_names = []
-        for feature_name, data in feature_dict.items():
+        for feature, data in feature_dict.items():
             # Aggregate the feature data and store the aggregations in the aggregated features dictionary
-            if feature_name != 'mfcc':
+            if feature != 'mfcc':
                 for aggregation in self.aggregations:
                     if aggregation not in aggregation_functions:
                         raise ValueError(
                             "aggregation {0} is not associated with a valid aggregation function".format(aggregation))
                     # Apply the aggregation result and store it
                     aggregation_function = aggregation_functions[aggregation]
-                    feature_name = '{0}-{1}'.format(feature_name, aggregation)
+                    feature_name = '{0}-{1}'.format(feature, aggregation)
                     aggregated_features[feature_name] = aggregation_function(data)
                     feature_names.append(feature_name)
             else:
