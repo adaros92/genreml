@@ -170,13 +170,15 @@ class LibrosaFeatureGenerator(FeatureGenerator):
         except KeyError:
             logging.critical("feature {0} is not associated with a librosa feature function".format(feature))
 
-    def _extract_features(self) -> dict:
+    def _extract_features(self) -> tuple:
         """ Extracts the supported features from Librosa and returns the data
 
         :returns a dictionary containing the names of the features extracted as keys and the data arrays as values
+            and a list of feature names in order of processing
         """
         # Define a feature dictionary in which to store feature aggregations
         feature_dict = {}
+        feature_names = []
         for feature in self.supported_features:
             # Skip feature generation for any features that need to be excluded
             if feature in self.features_to_exclude:
@@ -187,19 +189,22 @@ class LibrosaFeatureGenerator(FeatureGenerator):
                 # Extract the feature data
                 feature_data = librosa_function(**inputs)
                 feature_dict[feature] = feature_data
+                feature_names.append(feature)
             except Exception as e:
                 logging.critical("could not extract feature {0}".format(feature))
                 raise
-        return feature_dict
+        return feature_dict, feature_names
 
-    def _aggregate_features(self, feature_dict: dict) -> dict:
+    def _aggregate_features(self, feature_dict: dict) -> tuple:
         """ Aggregates the features in given dictionary of features according to supported aggregations
 
         :param feature_dict - a dictionary containing feature names to data arrays
         :returns a new dictionary containing the names of the feature aggregations as keys and agg results as values
+            and a list of feature names in order of processing
         """
         aggregated_features = {}
         aggregation_functions = {'mean': np.mean, 'min': np.min, 'max': np.max, 'std': np.std}
+        feature_names = []
         for feature_name, data in feature_dict.items():
             # Aggregate the feature data and store the aggregations in the aggregated features dictionary
             if feature_name != 'mfcc':
@@ -209,21 +214,26 @@ class LibrosaFeatureGenerator(FeatureGenerator):
                             "aggregation {0} is not associated with a valid aggregation function".format(aggregation))
                     # Apply the aggregation result and store it
                     aggregation_function = aggregation_functions[aggregation]
-                    aggregated_features['{0}-{1}'.format(feature_name, aggregation)] = aggregation_function(data)
+                    feature_name = '{0}-{1}'.format(feature_name, aggregation)
+                    aggregated_features[feature_name] = aggregation_function(data)
+                    feature_names.append(feature_name)
             else:
                 # Other features can't be aggregated
                 for mfcc_col in range(self.config.NUMBER_OF_MFCC_COLS):
-                    aggregated_features['mfcc{0}'.format(mfcc_col)] = aggregation_functions['mean'](data)
-        return aggregated_features
+                    feature_name = 'mfcc{0}'.format(mfcc_col)
+                    aggregated_features[feature_name] = aggregation_functions['mean'](data[mfcc_col])
+                    feature_names.append(feature_name)
+        return aggregated_features, feature_names
 
-    def generate(self) -> dict:
+    def generate(self) -> tuple:
         """ Runs the main feature generator logic and returns a dictionary with the processed features
 
         :returns a dictionary with feature names or aggregations as keys and data/aggregation results as values
+            and a list of feature names in order of processing
         """
         # Extract all of the features in config-based supported features
-        features = self._extract_features()
+        features, feature_names = self._extract_features()
         # If required, aggregate the features extracted
         if self.aggregate_features:
-            features = self._aggregate_features(features)
-        return features
+            features, feature_names = self._aggregate_features(features)
+        return features, feature_names
