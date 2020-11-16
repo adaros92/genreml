@@ -208,7 +208,9 @@ class LibrosaFeatureGenerator(FeatureGenerator):
         for feature_name, data in feature_dict.items():
             # Aggregate the feature data and store the aggregations in the aggregated features dictionary
             if feature_name != 'mfcc':
+                base_name = feature_name
                 for aggregation in self.aggregations:
+                    feature_name = base_name
                     if aggregation not in aggregation_functions:
                         raise ValueError(
                             "aggregation {0} is not associated with a valid aggregation function".format(aggregation))
