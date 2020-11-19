@@ -1,0 +1,7 @@
+librosa
+matplotlib
+pandas
+simpleaudio
+tensorflow
+youtube-dl
+scikit-learn==0.22.2.post1

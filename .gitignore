@@ -131,3 +131,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Tensorflow model
+/audio_classifier/FMA_model.h5
