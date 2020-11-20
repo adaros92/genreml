@@ -302,8 +302,9 @@ def main(dl_type, url_path, n):
             top_n = top_n[::-1][:n]
             for i, val in enumerate(top_n, start=1):
                 top_n_genres.append(LABELS_DICT[val])
-            print(f'Top {n} classified genres:')
+            print(f'Top {n} classified genres for ', os.path.splitext(os.path.basename(song.path)))
             print(top_n_genres)
+            sys.stderr.write(os.path.splitext(os.path.basename(song.path)) + ', ' + ', '.join(top_n_genres))
             
         except Exception as e:
             print('ERROR: {}'.format(repr(e)))
