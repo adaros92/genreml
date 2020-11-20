@@ -167,7 +167,8 @@ class Song:
                 'preferredcodec': SONG_EXT,
                 'preferredquality': '192',
             }],
-            'progress_hooks': [path_hook]
+            'progress_hooks': [path_hook],
+            'keepvideo': True
         }
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
