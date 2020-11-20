@@ -38,7 +38,7 @@ class AudioFile(object):
         return path + ".png"
 
     def to_spectrogram(
-            self, destination_filepath: str, spec_generator=None,
+            self, destination_filepath: str = None, spec_generator=None,
             spectrogram_type: str = "spectrogram", cmap: str = None,
             figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT):
         """ Extract spectrogram from the audio data and saves the resulting image to the destination path
@@ -56,10 +56,11 @@ class AudioFile(object):
             spec_generator = SpectrogramGenerator(
                 self.audio_signal, self.sample_rate, spectrogram_type=spectrogram_type)
         spectrogram = spec_generator.generate(cmap=cmap, figure_width=figure_width, figure_height=figure_height)
-        full_path = self._save_figure(spec_generator, spectrogram, destination_filepath, spectrogram_type)
-        return full_path
+        if destination_filepath:
+            _ = self._save_figure(spec_generator, spectrogram, destination_filepath, spectrogram_type)
+        return spectrogram
 
-    def to_melspectrogram(self, destination_filepath: str, spec_generator=None, cmap: str = None,
+    def to_melspectrogram(self, destination_filepath: str = None, spec_generator=None, cmap: str = None,
                           figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
                           figure_height: float = DisplayConfig.FIGSIZE_HEIGHT):
         """ Extract melspectrogram from the audio data and saves the resulting image to the destination path
@@ -75,7 +76,7 @@ class AudioFile(object):
             destination_filepath, spec_generator, spectrogram_type="melspectrogram", cmap=cmap,
             figure_width=figure_width, figure_height=figure_height)
 
-    def to_chromagram(self, destination_filepath: str, spec_generator=None, cmap: str = None,
+    def to_chromagram(self, destination_filepath: str = None, spec_generator=None, cmap: str = None,
                       figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
                       figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
                       ):
@@ -93,7 +94,7 @@ class AudioFile(object):
             figure_width=figure_width, figure_height=figure_height
         )
 
-    def to_waveplot(self, destination_filepath: str, waveplot_generator=None, cmap: str = None,
+    def to_waveplot(self, destination_filepath: str = None, waveplot_generator=None, cmap: str = None,
                     figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
                     figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
                     ):
@@ -101,22 +102,28 @@ class AudioFile(object):
         if not waveplot_generator:
             waveplot_generator = WavePlotGenerator(self.audio_signal, self.sample_rate)
         waveplot = waveplot_generator.generate(cmap=cmap, figure_width=figure_width, figure_height=figure_height)
-        full_path = self._save_figure(waveplot_generator, waveplot, destination_filepath, "waveplot")
-        return full_path
+        if destination_filepath:
+            _ = self._save_figure(waveplot_generator, waveplot, destination_filepath, "waveplot")
+        return waveplot
 
     def extract_visual_features(
-            self, destination_filepath: str, cmap: str = DisplayConfig.CMAP, exclusion_set: set = None,
+            self, destination_filepath: str = None, cmap: str = DisplayConfig.CMAP, exclusion_set: set = None,
             figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
-    ):
+    ) -> list:
         visual_features_to_method_map = {
             "spectrogram": self.to_spectrogram,
             "melspectrogram": self.to_melspectrogram,
             "chromagram": self.to_chromagram,
             "waveplot": self.to_waveplot
         }
+        visual_features = []
         for feature_name, feature_method in visual_features_to_method_map.items():
             if feature_name not in exclusion_set:
-                feature_method(destination_filepath, cmap=cmap, figure_width=figure_width, figure_height=figure_height)
+                visual_features.append(
+                    feature_method(
+                        destination_filepath, cmap=cmap, figure_width=figure_width, figure_height=figure_height)
+                )
+        return visual_features
 
     def extract_features(self,
                          aggregate_features: bool = True,
@@ -155,8 +162,7 @@ class AudioFiles(dict):
         """ Instantiates a collection of AudioFile objects represented as a dictionary where each key is the audio
         file's location on disk and each value the corresponding AudioFile object """
         super(AudioFiles, self).__init__()
-        self.bad_files_loaded = None
-        self.bad_files_extracted = None
+        self.visual_features = []
         self.features = []
         self.feature_names = []
         self.features_saved = []
@@ -167,18 +173,17 @@ class AudioFiles(dict):
 
         :param string file_location: the path to a file to read in
         """
-        self.bad_files_loaded = AudioFiles()
         try:
             logging.info("loading audio file from {0}".format(file_location))
             audio_signal, sample_rate = librosa.load(file_location)
             self[file_location] = AudioFile(file_location, audio_signal, sample_rate)
         except Exception as e:
             logging.warning("failed to load audio file from {0} due to {1}".format(file_location, e))
-            self.bad_files_loaded[file_location] = e
+            logging.warning(e)
 
     def _run_feature_extraction(
             self, audio_file, file_location, destination_filepath=None,
-            features_to_exclude=None, output_to_file=True, cmap=DisplayConfig.CMAP,
+            features_to_exclude=None, cmap=DisplayConfig.CMAP,
             figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
     ):
         """ Extracts features from a given AudioFile object representing a file in the given file_location and
@@ -188,17 +193,16 @@ class AudioFiles(dict):
         :param string file_location: the path to the file from with the AudioFile object was instantiated
         :param string destination_filepath: the filepath to save the extracted features to
         :param set features_to_exclude: a collection of feature names to exclude from the final result
-        :param bool output_to_file: whether to output results to a particular file or not
         """
         if not features_to_exclude:
             features_to_exclude = set()
         try:
-            if output_to_file:
+            if destination_filepath:
                 destination_filepath = destination_filepath.replace(" ", "")
-                audio_file.extract_visual_features(
-                    destination_filepath, cmap=cmap, exclusion_set=features_to_exclude,
-                    figure_width=figure_width, figure_height=figure_height
-                )
+            self.visual_features.append(audio_file.extract_visual_features(
+                destination_filepath, cmap=cmap, exclusion_set=features_to_exclude,
+                figure_width=figure_width, figure_height=figure_height
+            ))
             feature_dict, feature_names_list = audio_file.extract_features(exclusion_set=features_to_exclude)
             self.features.append(feature_dict)
             self.feature_names.append(feature_names_list)
@@ -251,7 +255,7 @@ class AudioFiles(dict):
 
     def extract_features(self,
                          file_locations, destination_filepath=None, features_to_exclude=None,
-                         load=True, audio_format=AudioConfig.AUDIO_FORMAT, output_to_file=True, cmap=DisplayConfig.CMAP,
+                         load=True, audio_format=AudioConfig.AUDIO_FORMAT, cmap=DisplayConfig.CMAP,
                          figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
                          figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
                          ):
@@ -263,17 +267,12 @@ class AudioFiles(dict):
         :param set features_to_exclude: a collection of feature names to exclude from the final result
         :param bool load: whether to load the files before extracting the features
         :param string audio_format: the format of the audio files in directory (wav, mp3, etc.)
-        :param bool output_to_file: whether to output results to a particular file or not
         :param cmap: https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
         :param figure_width: the visual feature figure width in inches
         :param figure_height: the visual feature figure height in inches
         """
-        if output_to_file and not destination_filepath:
-            raise ValueError("You must provide a valid destination_filepath to output results")
         self.features, self.features_saved = [], []
-        self.bad_files_loaded = AudioFiles()
-        self.bad_files_extracted = AudioFiles()
-        if output_to_file:
+        if destination_filepath:
             destination_filepath = destination_filepath + AudioConfig.FEATURE_DESTINATION
             file_handling.create_directory(destination_filepath)
         # Only load in and process a single file if the given location a file
@@ -281,7 +280,7 @@ class AudioFiles(dict):
             if load:
                 self._load_file(file_locations)
             self._run_feature_extraction(
-                self[file_locations], file_locations, destination_filepath, features_to_exclude, output_to_file,
+                self[file_locations], file_locations, destination_filepath, features_to_exclude,
                 cmap=cmap, figure_width=figure_width, figure_height=figure_height
 
             )
@@ -299,27 +298,21 @@ class AudioFiles(dict):
                     self._load_file(file)
                 try:
                     self._run_feature_extraction(
-                        self[file], file, destination_filepath, features_to_exclude, output_to_file,
+                        self[file], file, destination_filepath, features_to_exclude,
                         cmap=cmap, figure_width=figure_width, figure_height=figure_height
                     )
                     # Checkpoint features every AudioConfig.CHECKPOINT_FREQUENCY tracks
-                    if (idx + 1) % AudioConfig.CHECKPOINT_FREQUENCY == 0 and output_to_file:
+                    if (idx + 1) % AudioConfig.CHECKPOINT_FREQUENCY == 0 and destination_filepath:
                         self._checkpoint_feature_extraction(destination_filepath)
                 except Exception as e:
                     logging.critical("could not run feature extraction for {0}".format(file))
                     logging.critical(e)
-                    if output_to_file:
+                    if destination_filepath:
                         self._checkpoint_feature_extraction(destination_filepath)
         else:
             raise RuntimeError("file location {0} given to load audio clips from is invalid".format(file_locations))
-        if output_to_file:
+        if destination_filepath:
             self._checkpoint_feature_extraction(destination_filepath)
-
-        # Record bad files if there was a failure processing any of them
-        if (len(self.bad_files_extracted) > 0 or len(self.bad_files_loaded) > 0) and output_to_file:
-            logging.warning("some files couldn't be processed; saved record in {0}".format(destination_filepath))
-            self.bad_files_extracted.to_json(destination_filepath + "/files_couldnt_be_extracted.json")
-            self.bad_files_loaded.to_json(destination_filepath + "/files_couldnnt_be_loaded.json")
 
     def to_json(self, filepath):
         """ Serializes self as a json in a given file path
@@ -329,14 +322,12 @@ class AudioFiles(dict):
         with open(filepath, 'w') as outfile:
             json.dump(self, outfile)
 
-    def extract_sample_fma_features(self, destination_filepath=None, output_to_file=True,
-                                    audio_format=AudioConfig.AUDIO_FORMAT):
+    def extract_sample_fma_features(self, destination_filepath=None, audio_format=AudioConfig.AUDIO_FORMAT):
         """ Retrieves audio features from sample FMA audio files packaged with the application in genreml/fma_data
 
         :param str destination_filepath: the optional path to save features to as part of regular feature extraction
-        :param bool output_to_file: whether to save the features in the given destination_filepath or not
         :param string audio_format: the format of the audio files in directory (wav, mp3, etc.)
         """
         path = pkg_resources.resource_filename('genreml', 'fma_data/')
         self.extract_features(
-            path, destination_filepath=destination_filepath, output_to_file=output_to_file, audio_format=audio_format)
+            path, destination_filepath=destination_filepath, audio_format=audio_format)
