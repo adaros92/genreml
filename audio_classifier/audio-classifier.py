@@ -156,7 +156,8 @@ class Song:
 
         def path_hook(d):
             if not self.path:
-                self.path = f"{d['filename'][:-5]}.{SONG_EXT}"
+                file = d['filename'].split('.')[0]
+                self.path = f'{file}.{SONG_EXT}'
 
         ydl_opts = {
             'format': 'bestaudio/best',
