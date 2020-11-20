@@ -178,7 +178,6 @@ class AudioFiles(dict):
             audio_signal, sample_rate = librosa.load(file_location)
             self[file_location] = AudioFile(file_location, audio_signal, sample_rate)
         except Exception as e:
-            raise
             logging.warning("failed to load audio file from {0} due to {1}".format(file_location, e))
             logging.warning(e)
 

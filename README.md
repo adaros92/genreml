@@ -138,12 +138,27 @@ import genreml
 See genreml/model/__main__ for the hooks into the genreml functionality that the CLI has. Some examples below.
 
 Run feature extraction on sample FMA MP3s packaged with application.
-
 ```
 from genreml.model.processing import audio
 
 audio_files = audio.AudioFiles()
 audio_files.extract_sample_fma_features()
+```
+
+audio.AudioFiles() just creates a dictionary of individual file paths to audio data. You can extract the data from the
+collection as you would with any dictionary.
+```
+audio_signals = []
+sample_rates = []
+for audio_key, object in audio_files.items():
+    audio_signals.append(object.audio_rate)
+    sample_rates.append(object.sample_rates)
+```
+
+You can also get all of the visual and non-visual features extracted from the audio collection itself.
+```
+my_features = audio_files.features
+my_visual_features = audio_files.visual_features
 ```
 
 Convert features to Pandas data frame
@@ -154,12 +169,6 @@ df = audio_files.to_df()
 Run feature extraction on a directory or filepath of your choice
 ```
 audio_files.extract_features("[YOUR_FILE_PATH]")
-```
-
-Get features
-```
-my_features = audio_files.features
-my_visual_features = audio_files.visual_features
 ```
 
 Run feature extraction on a directory or filepath of your choice but export results to a destination filepath
