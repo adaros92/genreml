@@ -123,7 +123,7 @@ To change audio file type
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -af mp3
 ```
 
-To change export colot images and change image size to X in wide by Y in high
+To change export color images and change image size to X in wide by Y in high
 ```
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -cmap None -fw 15.0 -fh 5.0
 ```
@@ -143,7 +143,7 @@ Run feature extraction on sample FMA MP3s packaged with application.
 from genreml.model.processing import audio
 
 audio_files = audio.AudioFiles()
-audio_files.extract_sample_fma_features(output_to_file=False)
+audio_files.extract_sample_fma_features()
 ```
 
 Convert features to Pandas data frame
@@ -153,7 +153,13 @@ df = audio_files.to_df()
 
 Run feature extraction on a directory or filepath of your choice
 ```
-audio_files.extract_features("[YOUR_FILE_PATH]", output_to_file=False)
+audio_files.extract_features("[YOUR_FILE_PATH]")
+```
+
+Get features
+```
+my_features = audio_files.features
+my_visual_features = audio_files.visual_features
 ```
 
 Run feature extraction on a directory or filepath of your choice but export results to a destination filepath

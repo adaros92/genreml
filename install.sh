@@ -1,9 +1,14 @@
 # First try with python
 {
-  python setup.py test && pip install -e .
+  pip install -e .
 } ||
 { # If python fails, try with python3
-  python3 setup.py test && pip3 install -e .
+  pip3 install -e .
 }
-source ~/.bash_profile
+{
+  source ~/.zprofile
+} ||
+{
+ source ~/.bash_profile
+}
 rm -rf ./test_dir*
