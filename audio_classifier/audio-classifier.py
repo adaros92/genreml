@@ -19,6 +19,7 @@ import tensorflow as tf
 import youtube_dl
 from PIL import Image
 from scipy.io.wavfile import write
+from eyed3 import id3
 
 IMG_PIXELS = 67000
 IMG_WIDTH = 335
@@ -40,6 +41,8 @@ class Song:
         self.spectrograms = []
         self.sr = None
         self.genre_prediction = []
+        self.title = None
+        self.artist = None
 
     def get_predictions(self):
         return self.genre_prediction
@@ -231,6 +234,12 @@ class Song:
                 self.clips.append(y[lower_index:upper_index])
                 lower_index = upper_index
 
+        # get song title and artist if avaliable
+        tag = id3.Tag()
+        tag.parse(self.path)
+        self.title = tag.title
+        self.artist = tag.artist
+
     def extract_feature_data(self, spect_output_path: str):
         """ Method to extract feature data and spectrogram image file from each audio clip in self.clips
         :param spect_output_path: Output file path for spectrogram image file
@@ -305,7 +314,7 @@ def main(dl_type, url_path, n):
             print(f'Top {n} classified genres for ', os.path.splitext(os.path.basename(song.path)))
             print(top_n_genres)
             sys.stderr.write(os.path.splitext(os.path.basename(song.path)) + ', ' + ', '.join(top_n_genres))
-            
+
         except Exception as e:
             print('ERROR: {}'.format(repr(e)))
             return
