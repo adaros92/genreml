@@ -262,8 +262,8 @@ class Song:
         self.genre_prediction = np.array(
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             dtype=np.float64)
-        model = tf.keras.models.load_model('FMA_model.h5')
-        # model = tf.keras.models.load_model('FMA_model_seperate_genres.h5')
+        # model = tf.keras.models.load_model('FMA_model.h5')
+        model = tf.keras.models.load_model('FMA_model_seperate_genres.h5')
         count = 0
         for image, features in zip(self.spectrograms, self.features):
             count += 1
