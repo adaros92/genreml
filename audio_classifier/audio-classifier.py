@@ -19,6 +19,7 @@ import tensorflow as tf
 import youtube_dl
 from PIL import Image
 from scipy.io.wavfile import write
+from eyed3 import id3
 
 IMG_PIXELS = 67000
 IMG_WIDTH = 335
@@ -40,6 +41,8 @@ class Song:
         self.spectrograms = []
         self.sr = None
         self.genre_prediction = []
+        self.title = None
+        self.artist = None
 
     def get_predictions(self):
         return self.genre_prediction
@@ -166,7 +169,9 @@ class Song:
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': SONG_EXT,
                 'preferredquality': '192',
-            }],
+                },
+                {'key': 'FFmpegMetadata'}
+            ],
             'progress_hooks': [path_hook],
             'keepvideo': True
         }
@@ -231,6 +236,12 @@ class Song:
                 self.clips.append(y[lower_index:upper_index])
                 lower_index = upper_index
 
+        # get song title and artist if avaliable
+        tag = id3.Tag()
+        tag.parse(self.path)
+        self.title = tag.title
+        self.artist = tag.artist
+
     def extract_feature_data(self, spect_output_path: str):
         """ Method to extract feature data and spectrogram image file from each audio clip in self.clips
         :param spect_output_path: Output file path for spectrogram image file
@@ -251,7 +262,8 @@ class Song:
         self.genre_prediction = np.array(
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             dtype=np.float64)
-        model = tf.keras.models.load_model('FMA_model.h5')
+        # model = tf.keras.models.load_model('FMA_model.h5')
+        model = tf.keras.models.load_model('FMA_model_seperate_genres.h5')
         count = 0
         for image, features in zip(self.spectrograms, self.features):
             count += 1
@@ -302,9 +314,10 @@ def main(dl_type, url_path, n):
             top_n = top_n[::-1][:n]
             for i, val in enumerate(top_n, start=1):
                 top_n_genres.append(LABELS_DICT[val])
-            print(f'Top {n} classified genres:')
+            print(f'Top {n} classified genres for ', os.path.splitext(os.path.basename(song.path))[0])
             print(top_n_genres)
-            
+            sys.stderr.write(os.path.splitext(os.path.basename(song.path))[0] + ', ' + ', '.join(top_n_genres))
+
         except Exception as e:
             print('ERROR: {}'.format(repr(e)))
             return
