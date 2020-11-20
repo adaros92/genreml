@@ -169,7 +169,9 @@ class Song:
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': SONG_EXT,
                 'preferredquality': '192',
-            }],
+                },
+                {'key': 'FFmpegMetadata'}
+            ],
             'progress_hooks': [path_hook],
             'keepvideo': True
         }
@@ -311,9 +313,9 @@ def main(dl_type, url_path, n):
             top_n = top_n[::-1][:n]
             for i, val in enumerate(top_n, start=1):
                 top_n_genres.append(LABELS_DICT[val])
-            print(f'Top {n} classified genres for ', os.path.splitext(os.path.basename(song.path)))
+            print(f'Top {n} classified genres for ', os.path.splitext(os.path.basename(song.path))[0])
             print(top_n_genres)
-            sys.stderr.write(os.path.splitext(os.path.basename(song.path)) + ', ' + ', '.join(top_n_genres))
+            sys.stderr.write(os.path.splitext(os.path.basename(song.path))[0] + ', ' + ', '.join(top_n_genres))
 
         except Exception as e:
             print('ERROR: {}'.format(repr(e)))
