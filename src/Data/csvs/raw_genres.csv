@@ -1,0 +1,165 @@
+genre_id,genre_color,genre_handle,genre_parent_id,genre_title
+1,#006666,Avant-Garde,38,Avant-Garde
+2,#CC3300,International,,International
+3,#000099,Blues,,Blues
+4,#990099,Jazz,,Jazz
+5,#8A8A65,Classical,,Classical
+6,#4D0000,Novelty,38,Novelty
+7,#009999,Comedy,20,Comedy
+8,#665666,Old-Time__Historic,,Old-Time / Historic
+9,#663366,Country,,Country
+10,#009900,Pop,,Pop
+11,#E40089,Disco,14,Disco
+12,#840000,Rock,,Rock
+13,#5B747C,Easy_Listening,126,Easy Listening
+14,#330033,Soul-RB,,Soul-RnB
+15,#FF6600,Electronic,,Electronic
+16,#003366,Sound_Effects,6,Sound Effects
+17,#5E6D3F,Folk,,Folk
+18,#669933,Soundtrack,1235,Soundtrack
+19,#5E6D3F,Funk,14,Funk
+20,#006699,Spoken,,Spoken
+21,#CC0000,Hip-Hop,,Hip-Hop
+22,#dddd00,Audio_Collage,38,Audio Collage
+25,#840000,Punk,12,Punk
+26,#840000,Post-Rock,12,Post-Rock
+27,#840000,Lo-fi,12,Lo-Fi
+30,#00eeff,Field_Recordings,38,Field Recordings
+31,#777777,Metal,12,Metal
+32,#222222,Noise,38,Noise
+33,#5E6D3F,Psych-Folk,17,Psych-Folk
+36,#840000,Krautrock,12,Krautrock
+37,#990099,Jazz_Vocal,4,Jazz: Vocal
+38,#dddd00,Experimental,,Experimental
+41,#dddd00,Electroacoustic,38,Electroacoustic
+42,#FF6600,Ambient_Electronic,15,Ambient Electronic
+43,#320000,Radio_Art,65,Radio Art
+45,#666666,Loud-Rock,12,Loud-Rock
+46,#CC3300,Latin_America,2,Latin America
+47,#dddd00,Drone,38,Drone
+49,#5E6D3F,Free-Folk,17,Free-Folk
+53,#666666,Noise-Rock,45,Noise-Rock
+58,#840000,Psych-Rock,12,Psych-Rock
+63,#663366,Bluegrass,9,Bluegrass
+64,#840000,Electro-punk,25,Electro-Punk
+65,#320000,Radio,20,Radio
+66,#840000,Indie-Rock,12,Indie-Rock
+70,#8400FF,Industrial,12,Industrial
+71,#840000,No_Wave,25,No Wave
+74,#990099,Free-Jazz,4,Free-Jazz
+76,#009870,Experimental_Pop,10,Experimental Pop
+77,#CC3300,French,2,French
+79,#CC3300,Reggae_-_Dub,2,Reggae - Dub
+81,#CC3300,Afrobeat,92,Afrobeat
+83,#CC0000,Nerdcore,21,Nerdcore
+85,#840000,Garage,12,Garage
+86,#CC3300,Indian,2,Indian
+88,#840000,New_Wave,12,New Wave
+89,#840000,Post-Punk,25,Post-Punk
+90,#666666,Sludge,53,Sludge
+92,#CC3300,African,2,African
+94,#5E6D3F,Freak-folk,17,Freak-Folk
+97,#990099,Jazz_Out,4,Jazz: Out
+98,#840000,Progressive,12,Progressive
+100,#CC0000,Alternative_Hip-Hop,21,Alternative Hip-Hop
+101,#777777,Death-Metal,31,Death-Metal
+102,#CC3300,Middle_East,2,Middle East
+103,#5E6D3F,Singer-Songwriter,17,Singer-Songwriter
+107,#dddd00,Ambient,1235,Ambient
+109,#840000,Hardcore,25,Hardcore
+111,#840000,Power-Pop,25,Power-Pop
+113,#840000,Space-Rock,26,Space-Rock
+117,#CC3300,Polka,2,Polka
+118,#CC3300,Balkan,2,Balkan
+125,#881100,Unclassifiable,38,Unclassifiable
+130,#CC3300,Europe,2,Europe
+137,#663366,Americana,9,Americana
+138,#006699,Spoken_Weird,20,Spoken Weird
+166,#320000,Interview,65,Interview
+167,#777777,Black-Metal,31,Black-Metal
+169,#663366,Rockabilly,9,Rockabilly
+170,#5B747C,Easy_Listening_Vocal,13,Easy Listening: Vocal
+171,#CC3300,Brazilian,2,Brazilian
+172,#CC3300,Asia-Far_East,2,Asia-Far East
+173,#CC3300,North_Indian_Traditional,86,N. Indian Traditional
+174,#CC3300,South_Indian_Traditional,86,South Indian Traditional
+175,#CC3300,Bollywood,86,Bollywood
+176,#CC3300,Pacific,2,Pacific
+177,#CC3300,Celtic,2,Celtic
+178,#990099,Be-Bop,4,Be-Bop
+179,#990099,Big_BandSwing,4,Big Band/Swing
+180,#5E6D3F,British_Folk,17,British Folk
+181,#FF6600,Techno,15,Techno
+182,#FF6600,House,15,House
+183,#FF6600,Glitch,15,Glitch
+184,#FF6600,Minimal_Electronic,15,Minimal Electronic
+185,#FF6600,Breakcore_-_Hard,15,Breakcore - Hard
+186,#dddd00,Sound_Poetry,38,Sound Poetry
+187,#8A8A65,20th_Century_Classical,5,20th Century Classical
+188,#006699,Poetry,20,Poetry
+189,#320000,Talk_Radio,65,Talk Radio
+214,#CC3300,North_African,92,North African
+224,#00eeff,Sound_Collage,38,Sound Collage
+232,#CC3300,flamenco,2,Flamenco
+236,#FF6600,IDM,15,IDM
+240,#FF6600,Chiptune,297,Chiptune
+247,#dddd00,Musique_Concrete,38,Musique Concrete
+250,#dddd00,Improv,38,Improv
+267,#dddd00,New_Age,1235,New Age
+286,#CC0000,Trip-Hop,15,Trip-Hop
+296,#FF6600,Dance,15,Dance
+297,#FF6600,Chip_Music,15,Chip Music
+311,#5B747C,Lounge,13,Lounge
+314,#840000,Goth,12,Goth
+322,#8A8A65,Composed_Music,5,Composed Music
+337,#FF6600,Drum_amp_Bass,15,Drum & Bass
+359,#840000,Shoegaze,12,Shoegaze
+360,#4D0000,Kid-Friendly,6,Kid-Friendly
+361,#840000,Thrash,109,Thrash
+362,#009900,Synth_Pop,10,Synth Pop
+374,#006699,banter,20,Banter
+377,#5E6D3F,Deep_Funk,19,Deep Funk
+378,#006699,Spoken_Word,20,Spoken Word
+400,#FF6600,Chill-out,182,Chill-out
+401,#FF6600,Bigbeat,181,Bigbeat
+404,#840000,Surf,85,Surf
+428,#006699,Radio_Theater,20,Radio Theater
+439,#777777,Grindcore,31,Grindcore
+440,#840000,Rock_Opera,12,Rock Opera
+441,#8A8A65,Opera,5,Opera
+442,#8A8A65,Chamber_Music_1282,5,Chamber Music
+443,#8A8A65,Choral_Music,5,Choral Music
+444,#8A8A65,Symphony,5,Symphony
+456,#dddd00,Minimalism_1456,38,Minimalism
+465,#006699,Musical_Theater,20,Musical Theater
+468,#FF6600,Dubstep,15,Dubstep
+491,#FF6600,Skweee,468,Skweee
+493,#663366,western_swing,651,Western Swing
+495,#FF6600,Downtempo,15,Downtempo
+502,#CC3300,Cumbia,46,Cumbia
+504,#CC3300,Latin,2,Latin
+514,#dddd00,Sound_Art,38,Sound Art
+524,#CC3300,Romany_Gypsy,130,Romany (Gypsy)
+538,#E40089,compilation,18,Compilation
+539,#CC0000,rap,21,Rap
+542,#CC0000,breakbeat,21,Breakbeat
+567,#000099,Gospel,3,Gospel
+580,#CC0000,Abstract_Hip-Hop,1172,Abstract Hip-Hop
+602,#CC3300,Reggae_-_Dancehall,79,Reggae - Dancehall
+619,#CC3300,Spanish,130,Spanish
+651,#663366,Country__Western,9,Country & Western
+659,#8A8A65,Contemporary_Classical_1147,5,Contemporary Classical
+693,#CC0000,Wonky,21,Wonky
+695,#FF6600,Jungle,15,Jungle
+741,#CC3300,Klezmer,130,Klezmer
+763,#D4A017,holiday,763,Holiday
+806,#CC0000,hiphop,21,hiphop
+808,#CC3300,Salsa,46,Salsa
+810,#5B747C,Nu-Jazz,51,Nu-Jazz
+811,#CC0000,Hip-Hop_Beats,21,Hip-Hop Beats
+906,#990099,Modern_Jazz,4,Modern Jazz
+1032,#CC3300,Turkish,102,Turkish
+1060,#CC3300,tango,46,Tango
+1156,#CC3300,Fado,130,Fado
+1193,#D4A017,Christmas,763,Christmas
+1235,#000000,Instrumental,,Instrumental
