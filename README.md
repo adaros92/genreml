@@ -145,8 +145,27 @@ audio_files = audio.AudioFiles()
 audio_files.extract_sample_fma_features()
 ```
 
-audio.AudioFiles() just creates a dictionary of individual file paths to audio data. You can extract the data from the
-collection as you would with any dictionary.
+Run feature extraction on already loaded data.
+```
+from genreml.model.processing import audio
+
+audio_files = audio.AudioFiles()
+audio_files.extract_sample_fma_features()
+
+# Get the raw audio data from already loaded files
+audio_signal_data = []
+sample_rate_data = []
+for _, audio_obj in audio_files_processor.items():
+    audio_signal_data.append(audio_obj.audio_signal)
+    sample_rate_data.append(audio_obj.sample_rate)
+
+# Use that raw data for feature extraction with AudioData class
+audio_data_processor = AudioData(audio_signal_data, sample_rate_data)
+audio_data_processor.extract_features()
+```
+
+audio.AudioFiles() and AudioData() just create a dictionary of individual file paths to audio data. 
+You can extract the data from the collection as you would with any dictionary.
 ```
 audio_signals = []
 sample_rates = []

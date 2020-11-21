@@ -14,15 +14,14 @@ from genreml.model.processing.config import AudioConfig, DisplayConfig
 from genreml.model.utils import file_handling
 
 
-class AudioFile(object):
+class Audio(object):
 
-    def __init__(self, file_path: str, audio_signal, sample_rate):
+    def __init__(self, file_name: str, audio_signal, sample_rate, file_type: str = AudioConfig.AUDIO_FORMAT):
         """ Instantiates an AudioFile object that collects various attributes related to an audio file and exposes
         methods to extract features from that file
         """
-        self.file_path = file_path
-        self.file_name = file_handling.get_filename(file_path)
-        self.audio_type = file_handling.get_filetype(file_path)
+        self.file_name = file_name
+        self.audio_type = "." + file_type
         self.audio_signal = audio_signal
         self.sample_rate = sample_rate
 
@@ -145,23 +144,20 @@ class AudioFile(object):
         features, feature_names = feature_generator.generate()
         # Append the identifiers for the current audio file to the feature object
         features['file_name'] = self.file_name
-        features['file_path'] = self.file_path
         logging.info("generated {0} features for {1}".format(len(features), self.file_name))
         return features, feature_names
 
     def __repr__(self):
-        return "Audio file of type {0} loaded from {1}".format(self.audio_type, self.file_path)
+        return "Audio file of type {0} with ID".format(self.audio_type, self.file_name)
 
     def __str__(self):
         return self.__repr__()
 
 
-class AudioFiles(dict):
+class AudioCollection(dict):
 
     def __init__(self):
-        """ Instantiates a collection of AudioFile objects represented as a dictionary where each key is the audio
-        file's location on disk and each value the corresponding AudioFile object """
-        super(AudioFiles, self).__init__()
+        super(AudioCollection, self).__init__()
         self.visual_features = []
         self.features = []
         self.feature_names = []
@@ -176,21 +172,20 @@ class AudioFiles(dict):
         try:
             logging.info("loading audio file from {0}".format(file_location))
             audio_signal, sample_rate = librosa.load(file_location)
-            self[file_location] = AudioFile(file_location, audio_signal, sample_rate)
+            self[file_location] = Audio(file_handling.get_filename(file_location), audio_signal, sample_rate)
         except Exception as e:
             logging.warning("failed to load audio file from {0} due to {1}".format(file_location, e))
             logging.warning(e)
 
     def _run_feature_extraction(
-            self, audio_file, file_location, destination_filepath=None,
+            self, audio_object, destination_filepath=None,
             features_to_exclude=None, cmap=DisplayConfig.CMAP,
             figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
     ):
         """ Extracts features from a given AudioFile object representing a file in the given file_location and
         saves the features to destination_filepath
 
-        :param AudioFile audio_file: an AudioFile object
-        :param string file_location: the path to the file from with the AudioFile object was instantiated
+        :param Audio audio_object: an Audio class instance
         :param string destination_filepath: the filepath to save the extracted features to
         :param set features_to_exclude: a collection of feature names to exclude from the final result
         """
@@ -199,17 +194,28 @@ class AudioFiles(dict):
         try:
             if destination_filepath:
                 destination_filepath = destination_filepath.replace(" ", "")
-            self.visual_features.append(audio_file.extract_visual_features(
+            self.visual_features.append(audio_object.extract_visual_features(
                 destination_filepath, cmap=cmap, exclusion_set=features_to_exclude,
                 figure_width=figure_width, figure_height=figure_height
             ))
-            feature_dict, feature_names_list = audio_file.extract_features(exclusion_set=features_to_exclude)
+            feature_dict, feature_names_list = audio_object.extract_features(exclusion_set=features_to_exclude)
             self.features.append(feature_dict)
             self.feature_names.append(feature_names_list)
         except Exception as e:
-            logging.warning("failed to extract features from {0}".format(file_location))
+            logging.warning("failed to extract features from {0}".format(audio_object))
             logging.warning(e)
-            self.bad_files_extracted[file_location] = e
+
+    @staticmethod
+    def _initialize_feature_destination(destination_filepath: str) -> str:
+        """ Creates a directory in which to store exported audio features under the given filepath
+
+        :param destination_filepath - the path to a directory in which to store exported features
+        :retuns the full path where the features will be saved in
+        """
+        if destination_filepath:
+            destination_filepath = destination_filepath + AudioConfig.FEATURE_DESTINATION
+            file_handling.create_directory(destination_filepath)
+        return destination_filepath
 
     def to_df(self):
         """ Store the list of feature dictionaries in a Pandas dataframe where the keys become the columns
@@ -239,11 +245,11 @@ class AudioFiles(dict):
         if file_handling.file_exists(csv_filepath):
             logging.info(
                 "appending feature data frame containing {0} records to {1}".format(record_count, csv_filepath))
-            df.to_csv(csv_filepath, float_format='%.{}e'.format(10), header=False, index=None, mode='a')
+            df.to_csv(csv_filepath, float_format='%.{}e'.format(10), header=False, index=False, mode='a')
         else:
             logging.info(
                 "writing feature data frame containing {0} records to {1}".format(record_count, csv_filepath))
-            df.to_csv(csv_filepath, float_format='%.{}e'.format(10), index=None, mode='w')
+            df.to_csv(csv_filepath, float_format='%.{}e'.format(10), index=False, mode='w')
         return df, csv_filepath
 
     def _checkpoint_feature_extraction(self, destination_filepath, clear_features=True):
@@ -252,6 +258,30 @@ class AudioFiles(dict):
         self.features_saved.extend(self.features)
         if clear_features:
             self.features = []
+
+    def to_json(self, filepath):
+        """ Serializes self as a json in a given file path
+
+        :param string filepath: the file path to save the JSON to
+        """
+        with open(filepath, 'w') as outfile:
+            json.dump(self, outfile)
+
+    @property
+    def audio_data(self) -> tuple:
+        """ Generates a tuple containing the name of the audio object in the collection, its audio signal data,
+        and the sample rate
+        """
+        for audio_name, audio_obj in self.items():
+            yield audio_name, audio_obj.audio_signal, audio_obj.sample_rate
+
+
+class AudioFiles(AudioCollection):
+
+    def __init__(self):
+        """ Instantiates a collection of AudioFile objects represented as a dictionary where each key is the audio
+        file's location on disk and each value the corresponding AudioFile object """
+        super(AudioFiles, self).__init__()
 
     def extract_features(self,
                          file_locations, destination_filepath=None, features_to_exclude=None,
@@ -272,15 +302,13 @@ class AudioFiles(dict):
         :param figure_height: the visual feature figure height in inches
         """
         self.features, self.features_saved = [], []
-        if destination_filepath:
-            destination_filepath = destination_filepath + AudioConfig.FEATURE_DESTINATION
-            file_handling.create_directory(destination_filepath)
+        destination_filepath = self._initialize_feature_destination(destination_filepath)
         # Only load in and process a single file if the given location a file
         if os.path.isfile(file_locations):
             if load:
                 self._load_file(file_locations)
             self._run_feature_extraction(
-                self[file_locations], file_locations, destination_filepath, features_to_exclude,
+                self[file_locations], destination_filepath, features_to_exclude,
                 cmap=cmap, figure_width=figure_width, figure_height=figure_height
 
             )
@@ -298,7 +326,7 @@ class AudioFiles(dict):
                     self._load_file(file)
                 try:
                     self._run_feature_extraction(
-                        self[file], file, destination_filepath, features_to_exclude,
+                        self[file], destination_filepath, features_to_exclude,
                         cmap=cmap, figure_width=figure_width, figure_height=figure_height
                     )
                     # Checkpoint features every AudioConfig.CHECKPOINT_FREQUENCY tracks
@@ -314,14 +342,6 @@ class AudioFiles(dict):
         if destination_filepath:
             self._checkpoint_feature_extraction(destination_filepath)
 
-    def to_json(self, filepath):
-        """ Serializes self as a json in a given file path
-
-        :param string filepath: the file path to save the JSON to
-        """
-        with open(filepath, 'w') as outfile:
-            json.dump(self, outfile)
-
     def extract_sample_fma_features(self, destination_filepath=None, audio_format=AudioConfig.AUDIO_FORMAT):
         """ Retrieves audio features from sample FMA audio files packaged with the application in genreml/fma_data
 
@@ -331,3 +351,49 @@ class AudioFiles(dict):
         path = pkg_resources.resource_filename('genreml', 'fma_data/')
         self.extract_features(
             path, destination_filepath=destination_filepath, audio_format=audio_format)
+
+
+class AudioData(AudioCollection):
+
+    def __init__(self, audio_signal_data: any, sample_rate_data: any):
+        """ Creates AudioData collection containing the raw data for each audio file
+
+       :param audio_signal_data - a collection of individual audio signal arrays or list for each audio file
+       :param sample_rate_data - a collection of individual sample rate arrays or list for each audio file
+       """
+        super(AudioData, self).__init__()
+        if len(audio_signal_data) != len(sample_rate_data):
+            raise ValueError("The given data for audio signal and sample rate must be the same length")
+        self.audio_signal_data = audio_signal_data
+        self.sample_rate_data = sample_rate_data
+        self.init()
+
+    def init(self) -> None:
+        """ Initializes the collection of audio objects for each entry in the audio signal and sample rate data
+        """
+        audio_count = 1
+        # Create individual audio file objects for each signal and sample rate structures in the data
+        for audio_signal_data, audio_sample_rate_data in zip(self.audio_signal_data, self.sample_rate_data):
+            file_name = "AudioFile{0}".format(audio_count)
+            self[file_name] = Audio(file_name, audio_signal_data, audio_sample_rate_data)
+            audio_count += 1
+
+    def extract_features(self, destination_filepath: str = None, features_to_exclude: set = None,
+                         cmap: str = DisplayConfig.CMAP, figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
+                         figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
+                         ) -> None:
+        """ Iterates over all of the audio data in the collection and generates relevant features
+
+        :param string destination_filepath: the location to save features in
+        :param set features_to_exclude: a collection of feature names to exclude from the final result
+        :param cmap: https://matplotlib.org/3.3.2/api/_as_gen/matplotlib.axes.Axes.imshow.html
+        :param figure_width: the visual feature figure width in inches
+        :param figure_height: the visual feature figure height in inches
+        """
+        self.features, self.features_saved = [], []
+        destination_filepath = self._initialize_feature_destination(destination_filepath)
+        # Only load in and process a single file if the given location a file
+        for _, audio_object in self.items():
+            self._run_feature_extraction(audio_object=audio_object, destination_filepath=destination_filepath,
+                                         features_to_exclude=features_to_exclude,
+                                         cmap=cmap, figure_width=figure_width, figure_height=figure_height)
