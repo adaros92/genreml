@@ -9,6 +9,8 @@ class AudioConfig:
     FEATURE_DESTINATION = '/features/'
     # Checkpoint frequency in number of tracks processed
     CHECKPOINT_FREQUENCY = 10
+    # Minimum required clip length for prediction
+    MIN_CLIP_LENGTH = 29
 
 
 class DisplayConfig:

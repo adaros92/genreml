@@ -16,7 +16,7 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/adaros92/CS467-Project",
-    version='0.3.0',
+    version='0.3.1',
     install_requires=['requests', 'pandas', 'numpy', 'tabulate', 'ffmpeg', 'pydub', 'librosa', 'matplotlib'],
     tests_require=['pytest', 'pytest-cov'],
     license="MIT",
@@ -29,7 +29,7 @@ setup(
     name='genreml',
     python_requires='>=3.5',
     package_data={
-        'genreml': ['fma_data/*.mp3']
+        'genreml': ['fma_data/*.mp3', 'model_resources/*']
     },
     entry_points={
         'console_scripts': [
