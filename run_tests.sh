@@ -1,4 +1,5 @@
 # Run unit tests; coverage report will be generated as .coverage
+bash install.sh
 {
   pytest --cov=genreml ./test
 } ||
