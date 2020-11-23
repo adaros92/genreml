@@ -7,11 +7,6 @@ from genreml.model.processing import audio
 
 
 def get_unique_image_name(idx: int) -> str:
-    """ Generates unique names for images in collections of images generated from feature extraction
-
-    :param idx - the idx of the image in the collection to be used as a local ID
-    :returns a unique MD5 identifier of the image file
-    """
     hasher = hashlib.new('md5')
     image_name = "{0}img_{1}_{2}".format(idx, os.getpid(), random.randint(1, 100000))
     random_salt = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(15))
@@ -22,7 +17,6 @@ def get_unique_image_name(idx: int) -> str:
 def process_audio_file(root_directory, location: str) -> tuple:
     """ Given a location of an uploaded file, this will run feature extraction and return a tuple containing lists
     of features + images to be displayed to the user
-
     :param root_directory - the root directory the app is running from
     :param location - the location of a file to extract audio features from
     :returns tuple containing the lists of features extracted
