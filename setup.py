@@ -16,8 +16,9 @@ setup(
     long_description=README,
     long_description_content_type="text/markdown",
     url="https://github.com/adaros92/CS467-Project",
-    version='0.3.1',
-    install_requires=['requests', 'pandas', 'numpy', 'tabulate', 'ffmpeg', 'pydub', 'librosa', 'matplotlib'],
+    version='0.3.2',
+    install_requires=[
+        'requests', 'pandas', 'numpy', 'tabulate', 'ffmpeg', 'pydub', 'librosa', 'matplotlib', 'youtube_dl'],
     tests_require=['pytest', 'pytest-cov'],
     license="MIT",
     classifiers=[

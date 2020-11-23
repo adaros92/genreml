@@ -4,6 +4,7 @@ import random
 import string
 
 from genreml.model.processing import audio
+from genreml.model.utils import file_handling
 
 
 def get_unique_image_name(idx: int) -> str:
@@ -26,7 +27,8 @@ def process_audio_file(root_directory, location: str) -> tuple:
     matplotlib.use('Agg')
     # Run feature extraction
     audio_files = audio.AudioFiles()
-    audio_files.extract_features(location, cmap=None, figure_height=3, figure_width=5)
+    audio_format = file_handling.get_filetype(location).replace(".", "")
+    audio_files.extract_features(location, cmap=None, figure_height=3, figure_width=5, audio_format=audio_format)
     directory = os.path.join(root_directory, "static")
     visual_feature_paths = []
     for idx, visual_feature in enumerate(audio_files.visual_features[0]):

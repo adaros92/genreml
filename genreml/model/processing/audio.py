@@ -149,7 +149,7 @@ class Audio(object):
         return features, feature_names
 
     def __repr__(self):
-        return "Audio file of type {0} with ID".format(self.audio_type, self.file_name)
+        return "Audio file of type {0} with ID {1}".format(self.audio_type, self.file_name)
 
     def __str__(self):
         return self.__repr__()
@@ -172,12 +172,14 @@ class AudioCollection(dict):
             raise ValueError("Length {0} for the song is shorted than min required length of {1}".format(
                 length, min_clip_length))
         # Take middle section of the clip
-        elif length < min_clip_length * 3 + 1:
+        # elif length < min_clip_length * 3 + 1:
+        else:
             mid_index = int(len(audio_signal) / 2)
             lower_index = mid_index - int(sample_rate * min_clip_length / 2)
             upper_index = lower_index + int(sample_rate * min_clip_length)
             audio_signal = audio_signal[lower_index:upper_index]
         # Split the clip into three subclips of min_clip_length duration
+        '''
         else:
             num_clips = 3
             mid_index = int(len(audio_signal) / 2)
@@ -188,10 +190,10 @@ class AudioCollection(dict):
                 upper_index = lower_index + int(sample_rate * min_clip_length)
                 tmp_signal.append(audio_signal[lower_index:upper_index])
                 lower_index = upper_index
-            audio_signal = tmp_signal
+            audio_signal = tmp_signal'''
         return audio_signal
 
-    def _load_file(self, file_location):
+    def _load_file(self, file_location, file_type: str = AudioConfig.AUDIO_FORMAT):
         """ Reads in a individual file from the given file_location on disk and keeps a record of those files that
         couldn't be read in
 
@@ -200,8 +202,10 @@ class AudioCollection(dict):
         try:
             logging.info("loading audio file from {0}".format(file_location))
             audio_signal, sample_rate = librosa.load(file_location)
+            print(audio_signal)
             audio_signal = self.clip_audio_signal(audio_signal, sample_rate, AudioConfig.MIN_CLIP_LENGTH)
-            self[file_location] = Audio(file_handling.get_filename(file_location), audio_signal, sample_rate)
+            self[file_location] = Audio(
+                file_handling.get_filename(file_location), audio_signal, sample_rate, file_type=file_type)
         except Exception as e:
             logging.warning("failed to load audio file from {0} due to {1}".format(file_location, e))
             logging.warning(e)
@@ -335,7 +339,7 @@ class AudioFiles(AudioCollection):
         # Only load in and process a single file if the given location a file
         if os.path.isfile(file_locations):
             if load:
-                self._load_file(file_locations)
+                self._load_file(file_locations, file_type=audio_format)
             self._run_feature_extraction(
                 self[file_locations], destination_filepath, features_to_exclude,
                 cmap=cmap, figure_width=figure_width, figure_height=figure_height
@@ -352,7 +356,7 @@ class AudioFiles(AudioCollection):
             # Iterate over each file in the directory, load in if applicable, and extract features
             for idx, file in enumerate(audio_files_in_dir):
                 if load:
-                    self._load_file(file)
+                    self._load_file(file, file_type=audio_format)
                 try:
                     self._run_feature_extraction(
                         self[file], destination_filepath, features_to_exclude,
