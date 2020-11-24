@@ -1,5 +1,6 @@
 import argparse
 
+from genreml.model.acquisition import extraction
 from genreml.model.processing import audio, config
 from genreml.model.utils import string_parsing, file_handling, logger
 
@@ -63,7 +64,8 @@ def run(args):
     """ Run the operation as specified via CLI argument """
     # Download clips
     if args.operation == 'download':
-       pass
+        extractor = extraction.SongExtractor()
+        extractor.extract(args.song_name, args.artist_name)
     # Extract features from clips
     elif args.operation == 'process':
         processor = audio.AudioFiles()

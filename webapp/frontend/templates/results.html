@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+    <main role="main">
+        <div class="container-fluid">
+            <h5>Your predicted genre is:</h5>
+            <br>
+            <h6>[TBU]</h6>
+            <br><br><br>
+            <h5>Audio features extracted from your song:</h5>
+            <br>
+            <table>
+                {% for visual_feature_path in visual_features %}
+                    <tr>
+                    {% for cell in visual_feature_path %}
+                        <td><img src='{{ cell }}' class="img-fluid"/></td>
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </main>
+
+{% endblock content %}

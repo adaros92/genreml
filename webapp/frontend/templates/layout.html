@@ -22,7 +22,7 @@
     <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
 		<header class="masthead mb-auto">
 			<div class="inner">
-				<h3 class="masthead-brand">AI Audio Classifier</h3>
+				<a href="{{ url_for('index') }}"><h3 class="masthead-brand">AI Audio Classifier</h3></a>
 				<nav class="nav nav-masthead justify-content-center">
 					<a class="nav-link active" href="#">Home</a>
 					<a class="nav-link" href="#">About</a>
@@ -30,7 +30,7 @@
 				</nav>
 			</div>
 		</header>
-		{% block content %}{% endblock %}
+			{% block content %}{% endblock %}
 		<footer class="mastfoot mt-auto">
 			<div class="inner">
 				<p>An app created by <a href="#">Joshua Kinzel</a>, <a href="#">Gregory Noetzel</a>, <a href="https://www.linkedin.com/in/adamsr09/">Adams Rosales</a>, & <a href="#">Sean Sargent</a></p>
