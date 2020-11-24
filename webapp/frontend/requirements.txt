@@ -9,7 +9,7 @@ decorator==4.4.2
 ffmpeg==1.4
 Flask==1.1.2
 Flask-Cors==3.0.9
-genreml==0.3.1
+genreml==0.3.3
 idna==2.10
 itsdangerous==1.1.0
 Jinja2==2.11.2

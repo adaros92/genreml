@@ -1,7 +1,10 @@
 # Name: file_handling.py
 # Description: defines utility functions to interact with files and directories via the operating system
 
+import hashlib
 import os
+import random
+import string
 
 from pathlib import Path
 
@@ -90,3 +93,16 @@ def get_filetype(filepath):
     """
     file_name = get_filename(filepath)
     return "." + file_name.split(".")[1]
+
+
+def get_unique_file_name(file_id: str) -> str:
+    """ Returns a unique MD5 hash for a file_name based on some existing ID for a file
+
+    :param file_id - any file identification to hash
+    :returns a unique MD5 hex string representation for the given file ID
+    """
+    hasher = hashlib.new('md5')
+    file_name = "{0}file_{1}_{2}".format(file_id, os.getpid(), random.randint(1, 100000))
+    random_salt = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(15))
+    hasher.update("{0}{1}".format(file_name, random_salt).encode('utf-8'))
+    return hasher.hexdigest()

@@ -48,4 +48,4 @@ class SongExtractor(object):
         logging.info("Changing working directory to {0}".format(file_path))
         file_handling.change_directory_to(file_path)
         search_query = '{0}+{1}'.format(song_name, artist)
-        self.downloader.download([search_query], file_path)
+        self.downloader.download(file_path, search_values=[search_query])

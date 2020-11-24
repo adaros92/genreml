@@ -1,18 +1,7 @@
-import hashlib
 import os
-import random
-import string
 
 from genreml.model.processing import audio
 from genreml.model.utils import file_handling
-
-
-def get_unique_image_name(idx: int) -> str:
-    hasher = hashlib.new('md5')
-    image_name = "{0}img_{1}_{2}".format(idx, os.getpid(), random.randint(1, 100000))
-    random_salt = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(15))
-    hasher.update("{0}{1}".format(image_name, random_salt).encode('utf-8'))
-    return hasher.hexdigest()
 
 
 def process_audio_file(root_directory, location: str) -> tuple:
@@ -33,7 +22,7 @@ def process_audio_file(root_directory, location: str) -> tuple:
     visual_feature_paths = []
     for idx, visual_feature in enumerate(audio_files.visual_features[0]):
         # Create unique name for each file generated from visual features
-        image_name = get_unique_image_name(idx)
+        image_name = file_handling.get_unique_file_name(str(idx))
         full_path = "{0}/{1}.png".format(directory, image_name)
         # Save each image
         visual_feature.savefig(full_path)
