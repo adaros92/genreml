@@ -25,12 +25,16 @@
                     </p>
                 </div>
             </div>
+            <br>
             <div class="row">
-            {% for visual_feature_path in visual_features %}
                 <div class="col">
-                    <img src='{{visual_feature_path}}' class="img-fluid"/>
+                    <p class="lead">
+                        <form action = "{{ url_for('process_youtube_video') }}" method = "POST">
+                         <input name = "text" placeholder="Enter the URL to a Youtube video"/>
+                         <input type = "submit" value="Download"/>
+                        </form>
+                    </p>
                 </div>
-            {% endfor %}
             </div>
         </div>
     </main>
