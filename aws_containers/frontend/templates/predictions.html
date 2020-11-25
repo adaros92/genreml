@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <br>
+                <h1>Predictions</h1>
+            </div>
+        </div>
+        <br>
+        {% for prediction in predictions %}
+        <div class="row">
+            <div class="col">
+                <div class="lead">
+                    <div class="row">
+                        <h4><strong>Genre: </strong>{{ prediction['prediction'] }}</h3>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <h5><strong>MD5: </strong>{{ prediction['hash'] }}</h5>
+                        <br>
+                    </div>
+                    {% for spectro in prediction['spectros'] %}
+                    <div class="row">
+                        <br>
+                        <h5>{{ spectro[0] }}</h5>
+                        <br>
+                        <img src="data:image/png;base64,{{ spectro[1] }}" alt="{{ spectro[0] }}"/>
+                        <br>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </main>
+
+{% endblock content %}

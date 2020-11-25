@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <h1>AI Audio Classifier</h1>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+                <p class="lead">We trained a convolutional neural network to predict music genres from audio data. Try it out below!</p>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+                <p id="uploadMenuItem" class="lead">
+                    <a id="selectMusicButton" href="#" class="btn btn-lg btn-secondary" onclick='(document.getElementById("selectMusicToUpload")).click();' >Upload Audio Clip</a>
+                    <form id="file-upload" style="display:none" action="/uploadmultiple"  enctype="multipart/form-data" method="POST">
+                        <input id="selectMusicToUpload" style="display:none" type="file" name="multiFileUploadForm" accept="audio/*" onchange='(document.getElementById("uploadMenuItem")).style.display="none";(document.getElementById("startUploadMenuItem")).style.display="block";(document.getElementById("uploadMusicButton")).click();' multiple/>
+                        <div id="startUploadMenuItem" style="display:none">
+                            <input id="uploadMusicButton" style="display:none" type="submit" value="Add to libary"/>
+                        </div>
+                    </form>
+                </p>
+            </div>
+            <!-- <div class="col">
+                <p class="lead">
+                  <a href="#" class="btn btn-lg btn-secondary">Use a YouTube Link</a>
+                </p>
+            </div> -->
+        </div>
+    </main>
+
+{% endblock content %}
