@@ -3,7 +3,8 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow._api.v2 import data
 
-from genreml.model.cnn import config, dataset
+from genreml.model.cnn import config
+from genreml.model.processing import dataset
 from genreml.model.model import base_model, input
 
 class CnnInput(input.ModelInput):
@@ -43,6 +44,10 @@ class CnnModel(base_model.Model):
         features = np.array(input_data["features"])
         prediction = self.model.predict([np.array([features]), np.array(spectrograms)])
         return prediction
+    
+    def export_h5(self, path='./'):
+        self.model.save(path + self.name + '.h5')
+
 
     @classmethod
     def from_h5_file(cls, h5_filepath: str):
@@ -51,8 +56,8 @@ class CnnModel(base_model.Model):
         return cls_instance
 
     @classmethod
-    def train_new_model(cls, model, dataset, batch_size, epochs):
-        cls_instance = cls()
+    def train_new_model(cls, name, model, dataset, batch_size, epochs):
+        cls_instance = cls(name=name)
         cls_instance.model = model
         cls_instance.train(dataset, batch_size, epochs)
         return cls_instance
