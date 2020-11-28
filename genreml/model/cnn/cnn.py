@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow._api.v2 import data
 
-from genreml.model.cnn import config
+from genreml.model.cnn import config, dataset
 from genreml.model.model import base_model, input
-
 
 class CnnInput(input.ModelInput):
 
@@ -17,8 +18,16 @@ class CnnModel(base_model.Model):
         super().__init__(name)
         self.config = model_config
 
-    def train(self) -> None:
-        pass
+    def train(self, dataset: dataset.Dataset, batch_size, epochs) -> None:
+        # compile model
+        self.model.compile(optimizer='adam',
+            loss=keras.losses.binary_crossentropy,
+            metrics=['accuracy'])
+
+        # train model
+        self.training_history = self.model.fit(x=[dataset.train_features, dataset.train_images], y=dataset.train_labels, 
+                    validation_data=([dataset.test_features, dataset.test_images], dataset.test_labels), 
+                    batch_size=batch_size, epochs=epochs)
 
     def _preprocess_spectrogram(self, image: list) -> np.array:
         image = np.array(image).reshape(self.config.IMG_HEIGHT, self.config.IMG_WIDTH, 1)
@@ -39,4 +48,11 @@ class CnnModel(base_model.Model):
     def from_h5_file(cls, h5_filepath: str):
         cls_instance = cls()
         cls_instance.model = tf.keras.models.load_model(h5_filepath)
+        return cls_instance
+
+    @classmethod
+    def train_new_model(cls, model, dataset, batch_size, epochs):
+        cls_instance = cls()
+        cls_instance.model = model
+        cls_instance.train(dataset, batch_size, epochs)
         return cls_instance
