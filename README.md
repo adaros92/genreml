@@ -83,6 +83,68 @@ Alternatively, you can travel to the src/model and run the following as the main
 python3 __main__.py
 ```
 
+# Deploying the Webapp
+The webapp is being hosted on an us-east-2 EC2 instance in AWS account 146066720211. The public IPv4 address is 3.135.235.199
+and the public IPv4 DNS is ec2-3-135-235-199.us-east-2.compute.amazonaws.com.
+
+To deploy the webapp you will need to have SSH access to this instance. The key being used is available in 
+https://drive.google.com/file/d/1fc8yxqEZlNGF2s5lqqqSsr_oKaBHHcmA/view?usp=sharing to OSU students. To connect to the
+instance you can run ssh -i "MyKey4.pem" ubuntu@ec2-3-135-235-199.us-east-2.compute.amazonaws.com from the same directory
+as where MyKey4.pem is stored on your machine or provide a path to MyKey4.pem after -i argument like 
+ssh -i "/Users/adamsrosales/Downloads/MyKey4.pem" ubuntu@ec2-3-135-235-199.us-east-2.compute.amazonaws.com.
+
+There is a shell script in this repo (deploy_webapp.sh) that copies the contents of the webapp to the right location on the
+EC2 machine. You will need to provide the location of the private key on your machine when running it like so:
+bash deploy_webapp.sh /Users/adamsrosales/Downloads/MyKey4.pem.
+
+The deployment is configured like so.
+
+In /etc/nginx/sites-enabled/ there's a file called app with the following configuration which is the nginx
+configuration for hosting the site.
+
+```
+server {
+    listen 80;
+    server_name 3.135.235.199;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+} 
+```
+
+If you make any changes run deploy_webapp.sh to copy the contents of the webapp to the server and run:
+
+```
+sudo nginx -s reload
+sudo supervisorctl reload
+```
+
+To contents of the webapp are found in /home/ubuntu/webapp and they're being run by gunicorn. To
+see all the gunicorn processes run
+
+```
+ps ax|grep gunicorn
+```
+
+To kill the gunicorn processes run
+
+```
+sudo pkill gunicorn
+```
+
+To start the gunicorn process run this from the /home/ubuntu/webapp directory. This will start the site hosting.
+```
+gunicorn -w 2 frontend:app
+```
+
+The site can be accessed by traveling to the public EC2 DNS name: 
+```
+http://ec2-3-12-132-1.us-east-2.compute.amazonaws.com/
+```
+
 # Running the CLI
 
 **The youtube functionality is not currently working due to youtube-dl takedown**
@@ -145,8 +207,27 @@ audio_files = audio.AudioFiles()
 audio_files.extract_sample_fma_features()
 ```
 
-audio.AudioFiles() just creates a dictionary of individual file paths to audio data. You can extract the data from the
-collection as you would with any dictionary.
+Run feature extraction on already loaded data.
+```
+from genreml.model.processing import audio
+
+audio_files = audio.AudioFiles()
+audio_files.extract_sample_fma_features()
+
+# Get the raw audio data from already loaded files
+audio_signal_data = []
+sample_rate_data = []
+for _, audio_obj in audio_files_processor.items():
+    audio_signal_data.append(audio_obj.audio_signal)
+    sample_rate_data.append(audio_obj.sample_rate)
+
+# Use that raw data for feature extraction with AudioData class
+audio_data_processor = AudioData(audio_signal_data, sample_rate_data)
+audio_data_processor.extract_features()
+```
+
+audio.AudioFiles() and AudioData() just create a dictionary of individual file paths to audio data. 
+You can extract the data from the collection as you would with any dictionary.
 ```
 audio_signals = []
 sample_rates = []

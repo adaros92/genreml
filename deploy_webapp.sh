@@ -1,0 +1,1 @@
+scp -i "$1" -r ./webapp ubuntu@ec2-3-12-132-1.us-east-2.compute.amazonaws.com:/home/ubuntu/webapp

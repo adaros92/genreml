@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col">
+                    <h1>AI Audio Classifier</h1>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col">
+                    <p class="lead">We trained a convolutional neural network to predict music genres from audio data. Try it out below!</p>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col">
+                    <p class="lead">
+                        <form action = "{{ url_for('upload_file') }}" method = "POST" enctype = "multipart/form-data">
+                         <input type = "file" name = "file" />
+                         <input type = "submit" value="Upload"/>
+                        </form>
+                    </p>
+                </div>
+            </div>
+            <br>
+            <div class="row">
+                <div class="col">
+                    <p class="lead">
+                        <form action = "{{ url_for('process_youtube_video') }}" method = "POST">
+                         <input name = "text" placeholder="Enter the URL to a Youtube video"/>
+                         <input type = "submit" value="Download"/>
+                        </form>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+{% endblock content %}

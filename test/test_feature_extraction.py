@@ -2,11 +2,13 @@ import glob
 import os
 import pkg_resources
 
-from genreml.model.processing.audio import AudioFiles
+from genreml.model.processing.audio import AudioFiles, AudioData
 
 
 def test_extract_features():
-    """ Tests genreml.model.processing.audio.AudioFiles.extract_features method """
+    """ Tests genreml.model.processing.audio.AudioFiles.extract_features method and
+    genreml.model.processing.audio.AudioData.extract_features method
+    """
     audio_files_processor = AudioFiles()
     sample_data_path = pkg_resources.resource_filename('genreml', 'fma_data/')
     audio_files_processor.extract_sample_fma_features(destination_filepath=os.getcwd())
@@ -19,6 +21,24 @@ def test_extract_features():
     # There should be as many of the file types above as input file count
     for expected_file in expected_files:
         assert len(glob.glob(expected_file)) == file_count
+    audio_signal_data = []
+    sample_rate_data = []
+    for _, audio_obj in audio_files_processor.items():
+        audio_signal_data.append(audio_obj.audio_signal)
+        sample_rate_data.append(audio_obj.sample_rate)
+    audio_data_processor = AudioData(audio_signal_data, sample_rate_data)
+    audio_data_processor.extract_features()
+    assert len(audio_data_processor.features) == len(audio_files_processor.features_saved)
+
+
+def test_audio_data():
+    """ Tests genreml.model.processing.audio.AudioCollection.audio_data property """
+    audio_files_processor = AudioFiles()
+    audio_files_processor.extract_sample_fma_features()
+    data_count = 0
+    for audio_name, audio_signal, sample_rate in audio_files_processor.audio_data:
+        data_count += 1
+    assert data_count == len(audio_files_processor.features)
 
 
 def test_to_df():
