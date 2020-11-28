@@ -3,6 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 from genreml.model.model import input
+from genreml.model.cnn import dataset as ds
 
 
 class Model(ABC):
@@ -12,7 +13,7 @@ class Model(ABC):
         self.model = None
 
     @abstractmethod
-    def train(self):
+    def train(self, dataset: ds.Dataset, batch_size, epochs, optimizer):
         pass
 
     @abstractmethod

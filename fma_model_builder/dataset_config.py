@@ -1,5 +1,6 @@
 import os
 
+
 class DatasetConfig:
     # Image pixel size and shape 
     IMG_PIXELS = 67000

@@ -5,9 +5,22 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from genreml.model.cnn import config
 
 class Dataset:
+    """ Dataset class builds data needed for model training as specified in config file passed when instance created
+    Config file must include the following:
+
+    IMG_PIXELS - number of pixel images
+    IMG_WIDTH - image pixel width
+    IMG_HEIGHT - image pixel height
+    NUM_LABELS - number of output labels
+    NUM_FEATURES - number of extracted features in features_dataset (including track id)
+    TEST_SPLIT - train/test split for model training
+    IGNORE_CATEGORIES - song labels to be ignored
+    PATH_TO_FEATURES_DATASET - path to features tensorflow dataset
+    PATH_TO_IMAGES_DATASET - path to images tensforflow dataset
+    LABELS_KEY_PATH - path to labels.csv file
+    """
     def __init__(self, dataset_config):
         self.config = dataset_config
         self._features_dataset = None
@@ -28,6 +41,7 @@ class Dataset:
         self._build()
 
     def _import_data(self):
+        # import tensorflow datasets
         try:
             logging.info('Importing tensorflow datasets')
             self._features_dataset = list(tf.data.experimental.load(self.config.PATH_TO_FEATURES_DATASET, (
@@ -39,9 +53,12 @@ class Dataset:
         except Exception as e:
             logging.error('IMPORT DATASET ERROR: {}'.format(e))
             return
-    
-    def _set_ignore_categories(self, category_list):
+
+    def _set_ignore_categories(self):
+        # remove data with categories listed in IGNORE_CATEGORIES array
+        category_list = self.config.IGNORE_CATEGORIES
         labels_key = pd.read_csv(self.config.LABELS_KEY_PATH)['category']
+
         def get_key(val, obj):
             for key, value in obj.items():
                 if val == value:
@@ -64,6 +81,7 @@ class Dataset:
             return
 
     def _config_training_data(self):
+        # configure dataset for model training
         for i, (x, y) in enumerate(self._images_dataset):
             label = y.numpy()
             skip = False
@@ -94,9 +112,9 @@ class Dataset:
                                                                                                     test_size=ts,
                                                                                                     random_state=42)
         self.train_features, self.test_features, _, _ = train_test_split(self._features,
-                                                                 self._labels,
-                                                                 test_size=self.config.TEST_SPLIT,
-                                                                 random_state=42)
+                                                                         self._labels,
+                                                                         test_size=self.config.TEST_SPLIT,
+                                                                         random_state=42)
 
         # Reshape images to 200x335 pixels
         height = self.config.IMG_HEIGHT
@@ -107,11 +125,12 @@ class Dataset:
         self._images = None
         self._features = None
         self._labels = None
-    
+
     def _build(self):
+        # build runner that is triggered when instance is created
         logging.info('Building dataset for model training')
         self._import_data()
-        self._set_ignore_categories(self.config.IGNORE_CATEGORIES)
+        self._set_ignore_categories()
         self._config_training_data()
         self._split_training_data()
         logging.info('Dataset finished building')
