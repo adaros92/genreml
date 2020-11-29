@@ -1,6 +1,79 @@
 {% extends "layout.html" %}
 {% block content %}
-
+    <script>
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        window.genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
+        function getViewPredictions(view){
+            view.predict_uids.forEach(prediction=>{
+                prediction.getPrediction = predict=>{
+                    var origin = window.location.origin;
+                    fetch(origin+'/getpredictionbyuid/'+predict.uid)
+                    .then(res=>res.json())
+                    .then(data => {
+                        console.dir(data);
+                        if(data.ready === true){
+                            predict.ready = true;
+                            predict.value = data.prediction.split('|');
+                            document.getElementById(data.uid).innerText = "Prediction: "+predict.value.join(" ");
+                        }else{
+                            if (predict.trialCount < 3) {
+                                predict.trialCount++;
+                                predict.timeout = setTimeout(predict.getPrediction(predict), 200);
+                            }else{
+                                document.getElementById(predict.uid).innerText = "Network error, unable to get prediction.";
+                            }
+                        }
+                    })
+                };
+                if(prediction.ready !== true || prediction.value === ''){
+                    prediction.trialCount = 0;
+                    prediction.timeout = setTimeout(prediction.getPrediction(prediction), 100);
+                };
+                prediction.msg = view.msg;
+            });
+        }
+        window.genreML.viewData.forEach(view=>getViewPredictions(view));
+        function getViewSpectrograms(view){
+            view.spectro_uids.forEach(spectrogram=>{
+                spectrogram.getSpectrogram = spectro=>{
+                    var origin = window.location.origin;
+                    fetch(origin+'/getspectrogramsbyuid/'+spectro.uid)
+                    .then(res=>res.json())
+                    .then(data => {
+                        console.dir(data);
+                        if(data.ready === true){
+                            spectro.ready = true;
+                            spectro.value = data;
+                            data.images.spectrograms.forEach(gram=>{
+                                var type = Object.keys(gram)[0];
+                                var val = gram[Object.keys(gram)[0]];
+                                document.getElementById(type+"_"+spectro.uid+"_title").innerText = type[0].toLocaleUpperCase()+type.substr(1,type.length-1);
+                                document.getElementById(type+"_"+spectro.uid+"_image").setAttribute('src',"data:image/png;base64,"+val.original_color);
+                                document.getElementById(type+"_"+spectro.uid).setAttribute('style','display:block');
+                            });
+                        }else{
+                            if (spectro.trialCount < 3) {
+                                spectro.trialCount++;
+                                spectro.timeout = setTimeout(spectro.getSpectrogram(spectro), 200);
+                            }else{
+                                var el = document.createElement('h4');
+                                el.innerText = "Network error, unable to get spectrograms.";
+                                document.getElementById("predictionRow").appendChild(el);
+                            }
+                        }
+                    })
+                };
+                if(spectrogram.ready !== true || spectrogram.value === ''){
+                    spectrogram.trialCount = 0;
+                    spectrogram.timeout = setTimeout(spectrogram.getSpectrogram(spectrogram), 100);
+                };
+            });
+        }
+        window.genreML.viewData.forEach(view=>getViewSpectrograms(view));
+    </script>
     <main role="main" class="inner cover">
         <div class="row">
             <div class="col">
@@ -9,30 +82,36 @@
             </div>
         </div>
         <br>
-        {% for prediction in predictions %}
-        <div class="row">
+        {% for view in genre_ml_data['view_data'] %}
             <div class="col">
                 <div class="lead">
                     <div class="row">
-                        <h4><strong>Genre: </strong>{{ prediction['prediction'] }}</h3>
+                        <h4><strong>Filename: </strong>{{ view['filename'] }}</h4>
                         <br>
                     </div>
                     <div class="row">
-                        <h5><strong>MD5: </strong>{{ prediction['hash'] }}</h5>
+                        <h4><strong>MD5: </strong>{{ view['md5'] }}</h4>
                         <br>
                     </div>
-                    {% for spectro in prediction['spectros'] %}
-                    <div class="row">
-                        <br>
-                        <h5>{{ spectro[0] }}</h5>
-                        <br>
-                        <img src="data:image/png;base64,{{ spectro[1] }}" alt="{{ spectro[0] }}"/>
+                    {% for prediction in view['predict_uids'] %}
+                    <div class="row" id="predictionRow">
+                        <h4><strong id="{{prediction['uid']}}">{{view['msg']}}</strong></h4>
                         <br>
                     </div>
                     {% endfor %}
+                    {% for spectro in view['spectro_uids'] %}
+                        {% for spectro_type in ['melspectrogram', 'chromagram', 'dbspectrogram'] %}
+                        <div class="row" id="{{spectro_type}}_{{spectro['uid']}}" style="display:none">
+                            <br>
+                            <h5 id="{{spectro_type}}_{{spectro['uid']}}_title">{{spectro_type}}</h5>
+                            <br>
+                            <img id="{{spectro_type}}_{{spectro['uid']}}_image" src="data:image/png;base64," alt=""/>
+                            <br>
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
                 </div>
             </div>
-        </div>
         {% endfor %}
     </main>
 

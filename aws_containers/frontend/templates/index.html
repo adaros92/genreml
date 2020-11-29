@@ -18,8 +18,8 @@
             <div class="col">
                 <p id="uploadMenuItem" class="lead">
                     <a id="selectMusicButton" href="#" class="btn btn-lg btn-secondary" onclick='(document.getElementById("selectMusicToUpload")).click();' >Upload Audio Clip</a>
-                    <form id="file-upload" style="display:none" action="/uploadmultiple"  enctype="multipart/form-data" method="POST">
-                        <input id="selectMusicToUpload" style="display:none" type="file" name="multiFileUploadForm" accept="audio/*" onchange='(document.getElementById("uploadMenuItem")).style.display="none";(document.getElementById("startUploadMenuItem")).style.display="block";(document.getElementById("uploadMusicButton")).click();' multiple/>
+                    <form id="file-upload" style="display:none" action="/uploads"  enctype="multipart/form-data" method="POST">
+                        <input id="selectMusicToUpload" style="display:none" type="file" name="fileUploadForm" accept="audio/*" onchange='(document.getElementById("uploadMenuItem")).style.display="none";(document.getElementById("startUploadMenuItem")).style.display="block";(document.getElementById("uploadMusicButton")).click();'/>
                         <div id="startUploadMenuItem" style="display:none">
                             <input id="uploadMusicButton" style="display:none" type="submit" value="Add to libary"/>
                         </div>
@@ -33,5 +33,11 @@
             </div> -->
         </div>
     </main>
+    <script>
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        }
+        console.log("{{ genre_ml_data['batch_id'] }}")
+    </script>
 
 {% endblock content %}

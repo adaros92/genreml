@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 import functools
 import hashlib
 import httpx
@@ -10,25 +11,24 @@ import re
 import requests
 import sys
 import uuid
-from quart import Quart, request, jsonify, abort, redirect, url_for, url_for, render_template
+from quart import Quart, request, jsonify, abort, redirect, url_for, url_for, render_template, session
 import dns.resolver as resolver
 import numpy as np
+import audio_classifier as classy
+import aiofiles as aiof
 
 
 app = Quart(__name__, static_folder='./static', static_url_path='/static')
+app.secret_key = str(uuid.uuid4())
 
 
 class app_state:
     def __init__(self, loop):
         self.loop = loop
         self.signer = itsdangerous.Signer(os.environ['GENREML_SIGNING_TOKEN'])
+        self.session_signer = itsdangerous.Signer(os.environ['SESSION_SIGNING_TOKEN'])
         self.serializer = itsdangerous.Serializer(os.environ['GENREML_SIGNING_TOKEN'])
-        self.filestore_directory = "/filestore"
-        # generate endpoints
-        self.predict_url = self.get_srv_record_url('GENREML_PREDICT_PORT', 'GENREML_PREDICT_ADDRESS', 'GENREML_PREDICT_SCHEMA')
-        self.predict_node_url = self.get_srv_record_url('GENREML_PREDICT_NODE_PORT', 'GENREML_PREDICT_NODE_ADDRESS', 'GENREML_PREDICT_NODE_SCHEMA')
-        self.spectro_url = self.get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA')
-        self.features_url = self.get_srv_record_url('GENREML_FEATURES_PORT', 'GENREML_FEATURES_ADDRESS', 'GENREML_FEATURES_SCHEMA')
+        self.filestore_directory = "/opt/file_store"
         self.genres = os.environ['GENREML_GENRES'].split('|')
         self.model_hash = os.environ['GENREML_MODEL_HASH']
         self.image_labels_to_title = {
@@ -42,31 +42,35 @@ class app_state:
             "image_db_spectrogram_image": "DB Spectrogram",
             "image_db_spectrogram_original_color": "DB Spectrogram"
         }
+        self.prediction_queue = asyncio.Queue()
+        self.spectrograms_queue = asyncio.Queue()
+        self.batch_store = dict()
 
-    def get_srv_record_url(self, port_key, address_key, schema_key, test_endpoint=True):
-        srv_schema = os.environ[schema_key]
-        srv_address = os.environ[address_key]
+
+def get_srv_record_url(port_key, address_key, schema_key, test_endpoint=True):
+    srv_schema = os.environ[schema_key]
+    srv_address = os.environ[address_key]
+    srv_url = srv_schema+"://"+os.environ[address_key]
+    if port_key in os.environ:
+        srv_url += ":"+os.environ[port_key]
+    try:
+        resolve_service_url = resolver.query(srv_address, 'SRV')
+        srv_address = re.split('\s+', resolve_service_url.rrset.to_text())[-1].strip('.')
+        srv_url = srv_schema+"://"+re.split('\s+', resolve_service_url.rrset.to_text())[-1].strip('.')
+        if port_key in os.environ:
+            srv_url += ":"+os.environ[port_key]
+        if test_endpoint:
+            req_test = requests.get(srv_url+"/test")
+            req_test.raise_for_status()
+    except Exception as ex:
+        eprint("domain discovery failed")
+        eprint(str(ex))
+        # in most cases this is likely to be the wrong url
         srv_url = srv_schema+"://"+os.environ[address_key]
         if port_key in os.environ:
             srv_url += ":"+os.environ[port_key]
-        try:
-            resolve_service_url = resolver.query(srv_address, 'SRV')
-            srv_address = re.split('\s+', resolve_service_url.rrset.to_text())[-1].strip('.')
-            srv_url = srv_schema+"://"+re.split('\s+', resolve_service_url.rrset.to_text())[-1].strip('.')
-            if port_key in os.environ:
-                srv_url += ":"+os.environ[port_key]
-            if test_endpoint:
-                req_test = requests.get(srv_url+"/test")
-                req_test.raise_for_status()
-        except Exception as ex:
-            eprint("domain discovery failed")
-            eprint(str(ex))
-            # in most cases this is likely to be the wrong url
-            srv_url = srv_schema+"://"+os.environ[address_key]
-            if port_key in os.environ:
-                srv_url += ":"+os.environ[port_key]
-            pass
-        return srv_url
+        pass
+    return srv_url
 
 
 # simple logging snippet from https://stackoverflow.com/questions/5574702/how-to-print-to-stderr-in-python
@@ -74,119 +78,500 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, flush=True, **kwargs)
 
 
-@app.route('/uploadmultiple', methods=['POST'])
+def get_uid():
+    return str(uuid.uuid4()).replace('-', '')
+
+
+async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_all=True):
+    global APP_STATE
+    return_state = True
+    spectrogram_work_items = list()
+    prediction_work_items = list()
+    if bid not in APP_STATE.batch_store:
+        return_state = False
+        return (return_state, prediction_work_items, spectrogram_work_items)
+    try:
+        data_uid = get_uid()
+        # previous hard coded variables now from state class
+        filestore_directory = APP_STATE.filestore_directory
+        upload_path = filestore_directory+"/"+data_uid+'.'+ext
+        async with aiof.open(upload_path, 'wb') as f:
+            await f.write(raw_data)
+        eprint("defining class")
+        song_class = classy.Song()
+        song_class.path = upload_path
+        eprint("extracting song data")
+        song_class.extract_song_data()
+        eprint("starting clips")
+        if use_all is False:
+            song_class.clips = [song_class.clips[0]]
+        for clip in song_class.clips:
+            try:
+                uid = get_uid()
+                # export wav file
+                scaled = np.int16(clip / np.max(np.abs(clip)) * 32767)
+                classy.write('/opt/prediction_store/'+uid+'.'+'wav', song_class.sr, scaled)
+                prediction_work_item = {
+                    'path': '/opt/prediction_store/'+uid+'.'+'wav',
+                    'filename': uid+'.'+'wav',
+                    'ext': 'wav',
+                    'uid': uid,
+                    'batch_id': bid,
+                    'source_md5': md5,
+                    'model_hash': model_hash,
+                    'result': None
+                }
+                prediction_work_items.append(prediction_work_item)
+                APP_STATE.batch_store[bid]['predictions'][uid] = prediction_work_item
+                await APP_STATE.prediction_queue.put(prediction_work_item)
+                eprint("prediction in the queue")
+                classy.write('/opt/spectrogram_store/'+uid+'.'+'wav', song_class.sr, scaled)
+                spectrogram_work_item = {
+                    'path': '/opt/spectrogram_store/'+uid+'.'+'wav',
+                    'filename': uid+'.'+'wav',
+                    'ext': 'wav',
+                    'uid': uid,
+                    'batch_id': bid,
+                    'source_md5': md5,
+                    'model_hash': model_hash,
+                    'images': None
+                }
+                spectrogram_work_items.append(spectrogram_work_item)
+                APP_STATE.batch_store[bid]['spectrograms'][uid] = spectrogram_work_item
+                await APP_STATE.spectrograms_queue.put(spectrogram_work_item)
+                eprint("spectrogram in the queue")
+            except Exception as ex:
+                eprint("failure in clip processing")
+                eprint(str(ex))
+                pass
+    except Exception as ex:
+        eprint("failure in music file processing")
+        eprint(str(ex))
+        return_state = False
+        pass
+    try:
+        if os.path.isfile(upload_path):
+            os.remove(upload_path)
+    except Exception as ex:
+        eprint(str(ex))
+        pass
+    return (return_state, prediction_work_items, spectrogram_work_items)
+
+
+@app.route('/uploads', methods=['POST'])
 async def file_upload_handler():
     global APP_STATE
-    # previous hard coded variables now from state class
-    filestore_directory = APP_STATE.filestore_directory
-    signer = APP_STATE.signer
-    serializer = APP_STATE.serializer
-    predict_node_url = APP_STATE.predict_node_url
-    genres = APP_STATE.genres
-    model_hash = APP_STATE.model_hash
-    files = (await request.files).getlist("multiFileUploadForm")
-    predictions = []
-    reuse_api_call = False
-    result = None
+    batch_id = session.get('batchid')
+    eprint("work request incoming")
+    if APP_STATE.session_signer.validate(batch_id) is not True:
+        eprint("bad batch id")
+        return redirect(url_for('index'))
+    else:
+        batch_id = APP_STATE.session_signer.unsign(batch_id).decode('utf-8')
+        eprint(str(batch_id))
+        APP_STATE.batch_store[batch_id] = {
+            'batch_id': batch_id,
+            'time': datetime.datetime.now(),
+            'predictions': dict(),
+            'spectrograms': dict(),
+            'model_hash': APP_STATE.model_hash
+        }
+    files = (await request.files).getlist("fileUploadForm")
+    background_work = []
     for f in files:
         data = f.read()
         if type(data) == bytes:
             try:
                 file_hash = hashlib.md5(data).hexdigest()
-                song_upload = {
-                    'ext': 'musicfile',
-                    'data': base64.b64encode(data).decode('utf-8')
-                }
-                async with httpx.AsyncClient() as client:
-                    spectro_tasks = {
-                        'mel_spectrogram': APP_STATE.loop.create_task(client.post(APP_STATE.get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA', False)+'/melspectrogram', data=serializer.dumps(song_upload), timeout=600.0)),
-                        'chromagram': APP_STATE.loop.create_task(client.post(APP_STATE.get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA', False)+'/chromagram', data=serializer.dumps(song_upload), timeout=600.0)),
-                        'db_spectrogram': APP_STATE.loop.create_task(client.post(APP_STATE.get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA', False)+'/dbspectrogram', data=serializer.dumps(song_upload), timeout=600.0))
-                    }
-                    song_upload['model_hash'] = model_hash
-                    eprint("requesting prediction")
-                    song_prediction = None
-                    try:
-                        song_prediction = await client.post(APP_STATE.get_srv_record_url('GENREML_PREDICT_PORT', 'GENREML_PREDICT_ADDRESS', 'GENREML_PREDICT_SCHEMA', False)+'/prediction', data=serializer.dumps(song_upload), timeout=600.0)
-                    except Exception as ex:
-                        eprint("prediction request failed")
-                        eprint(str(ex))
-                        pred = ["unknown"]
-                        pass
-                    eprint("pred:"+str(song_prediction))
-                    try:
-                        if song_prediction is not None:
-                            song_prediction = song_prediction.json()
-                            if "predictions" in song_prediction:
-                                pred = song_prediction["predictions"].split("|")
-                            if 'ex' in song_prediction:
-                                pred = ["unknown"]
-                                eprint("attempt to get prediction failed")
-                                eprint(song_prediction['ex'])
-                            if 'msg' in song_prediction:
-                                eprint(song_prediction['msg'])
-                    except Exception as ex:
-                        eprint("prediction parse failed")
-                        eprint(str(ex))
-                        pass
-                    eprint("building spectrograms")
-                    result = {
-                        "hash": file_hash,
-                        "prediction": " ".join([str(x) for x in pred]),
-                        "spectrogram": "",
-                        "spectros": []
-                    }
-                    try:
-                        spectrograms = {
-                            'mel_spectrogram': await spectro_tasks['mel_spectrogram'],
-                            'chromagram': await spectro_tasks['chromagram'],
-                            'db_spectrogram': await spectro_tasks['db_spectrogram']
-                        }
-                        for item in spectrograms:
-                            try:
-                                spectrograms[item].raise_for_status()
-                            except Exception as ex:
-                                eprint(str(ex))
-                                continue
-                            if 'ex' not in spectrograms[item].json():
-                                temp = spectrograms[item].json()
-                                for spec_type in temp:
-                                    image_label = "_".join(["image", item, spec_type])
-                                    if not image_label.endswith('_original_color'):
-                                        continue
-                                    result["spectros"].append((
-                                        APP_STATE.image_labels_to_title[image_label] if image_label in APP_STATE.image_labels_to_title else "Spectrogram",
-                                        temp[spec_type]
-                                    ))
-                            else:
-                                eprint(spectrograms[item].json()['ex'])
-                    except Exception as ex:
-                        eprint("attempt to get spectrograms failed")
-                        eprint(str(ex))
-                        pass
-                    predictions.append(result)
+                try:
+                    filename = f.filename
+                    eprint(str(filename))
+                    name = filename.split('.')[0]
+                    ext = filename.split('.')[-1]
+                    if name == ext:
+                        ext = 'music_file'
+                    start_work = await create_clips(data, batch_id, file_hash, APP_STATE.model_hash, filename, name, ext, False)
+                    background_work.append({
+                        'md5': file_hash,
+                        'work': start_work,
+                        'filename': filename
+                    })
+                except Exception as ex:
+                    background_work.append({
+                        'md5': file_hash,
+                        'work': tuple()
+                    })
+                    pass
             except Exception as ex:
                 eprint("attempt to process file failed")
                 eprint(str(ex))
-                if result is not None:
-                    predictions.append(result)
-                else:
-                    predictions.append({
-                        "hash": file_hash,
-                        "prediction": "unknown",
-                        "spectros": []
-                    })
+                background_work.append({
+                    'md5': "unknown",
+                    'work': tuple()
+                })
         else:
             eprint("file wrong data type")
-    if len(predictions) > 0:
-        return await render_template('predictions.html', predictions=predictions)
+    # (return_state, prediction_work_items, spectrogram_work_items)
+    view_items = []
+    for item in background_work:
+        view_item = {
+            'md5': item['md5'],
+            'filename': item['filename'],
+            'spectro_uids': list(),
+            'predict_uids': list()
+        }
+        if item['md5'] != 'unknown':
+            view_item['msg'] = 'Please wait while we are getting your results in the background.'
+        else:
+            view_item['msg'] = 'Something went wrong, please try again or use a different file.'
+        if len(item['work']) < 3:
+            view_items.append(view_item)
+            continue
+        spectrogram_work_items = item['work'][2]
+        prediction_work_items = item['work'][1]
+        for spectro in spectrogram_work_items:
+            if 'uid' in spectro:
+                view_item['spectro_uids'].append({
+                    'uid': spectro['uid'],
+                    'value': '',
+                    'ready': False
+                })
+        for predict in prediction_work_items:
+            if 'uid' in predict:
+                view_item['predict_uids'].append({
+                    'uid': predict['uid'],
+                    'value': '',
+                    'ready': False
+                })
+        view_items.append(view_item)
+    return await render_template('predictions.html', genre_ml_data={
+        'batch_id': batch_id,
+        'view_data': view_items
+    })
     return redirect(url_for('index'))
+
+
+async def long_poll_queuer(queue):
+    then = datetime.datetime.now()
+    while (datetime.datetime.now()-then).total_seconds() < 30:
+        if not queue.empty():
+            return {
+                'work': True,
+                'item': await queue.get()
+            }
+        await asyncio.sleep(0.3)
+    return {'work': False, 'item': None}
+
+
+async def prep_queue_item(data):
+    if data['item'] is None:
+        return jsonify(data)
+    if 'path' not in data['item']:
+        return jsonify(data)
+    eprint(str(data))
+    async with aiof.open(data['item']['path'], 'rb') as f:
+        data['item']['data'] = base64.b64encode(await f.read()).decode('utf-8')
+    send_back = jsonify(data)
+    del(data['item']['data'])
+    eprint("queue work prepped")
+    return send_back
+
+
+@app.route('/predictions', methods=['POST'])
+async def get_prediction_work():
+    global APP_STATE
+    #eprint("incoming prediction request")
+    req_data = await request.get_data()
+    try:
+        if APP_STATE.signer.validate(req_data):
+            #eprint("validated prediction request")
+            data = await long_poll_queuer(APP_STATE.prediction_queue)
+            return await prep_queue_item(data)
+    except Exception as ex:
+        eprint("error when prepping prediction queue")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'could not send item',
+            'ex': str(ex),
+            'work': False,
+            'item': None
+        })
+    return jsonify({
+        'work': False,
+        'item': None
+    })
+
+
+@app.route('/spectrograms', methods=['POST'])
+async def get_spectrogram_work():
+    global APP_STATE
+    #eprint("incoming spectrogram request")
+    req_data = await request.get_data()
+    try:
+        if APP_STATE.signer.validate(req_data):
+            #eprint("validated spectrogram request")
+            data = await long_poll_queuer(APP_STATE.spectrograms_queue)
+            return await prep_queue_item(data)
+    except Exception as ex:
+        eprint("error when prepping predispectrogram queue")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'payload did not have valid signature',
+            'ex': str(ex),
+            'work': False,
+            'item': None
+        })
+    return jsonify({
+        'work': False,
+        'item': None
+    })
+
+
+# {
+#     'path': '/opt/spectrogram_store/'+uid+'.'+'music_file',
+#     'uid': uid,
+#     'batch_id': bid,
+#     'source_md5': md5,
+#     'model_hash': model_hash,
+#     'result': None
+# }
+@app.route('/finishedspectrograms', methods=['POST'])
+async def post_spectrograms():
+    global APP_STATE
+    req_data = await request.get_data()
+    try:
+        req_json = APP_STATE.serializer.loads(req_data)
+        if req_json['batch_id'] in APP_STATE.batch_store and req_json['uid'] in APP_STATE.batch_store[req_json['batch_id']]['spectrograms']:
+            eprint("spectrogram result from batch id: "+req_json["batch_id"])
+            APP_STATE.batch_store[req_json['batch_id']]['spectrograms'][req_json['uid']]['images'] = req_json
+            try:
+                if os.path.isfile(APP_STATE.batch_store[req_json['batch_id']]['spectrograms'][req_json['uid']]['path']):
+                    os.remove(APP_STATE.batch_store[req_json['batch_id']]['spectrograms'][req_json['uid']]['path'])
+            except Exception as ex:
+                eprint(str(ex))
+                pass
+        return jsonify({
+            'received': True
+        })
+    except Exception as ex:
+        eprint("issue with finished spectrogram post")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'payload did not have valid signature',
+            'ex': str(ex),
+            'received': False
+        })
+    return jsonify({
+        'received': True
+    })
+
+
+@app.route('/finishedpredictions', methods=['POST'])
+async def post_predictions():
+    global APP_STATE
+    req_data = await request.get_data()
+    try:
+        req_json = APP_STATE.serializer.loads(req_data)
+        if 'predictor_id' in req_json and 'predictions' in req_json:
+            eprint(" ".join(["container", req_json['predictor_id'], "predicted", req_json['predictions']]))
+            if req_json['batch_id'] in APP_STATE.batch_store and req_json['uid'] in APP_STATE.batch_store[req_json['batch_id']]['predictions']:
+                eprint("prediction result from batch id: "+req_json["batch_id"])
+                # {
+                #     'predictor_id': 'ffee4940-6ec3-4952-bcc2-af7bc99a4928',
+                #     'predictions': 'Hip-Hop|Electronic|Pop|Punk|Rock',
+                #     'batch_id': 'e00e787e-597d-4178-b9d7-a885a9c8ba86',
+                #     'ext': 'wav',
+                #     'filename': '84a655b173a84071b09f9e3cc5d4a683.wav',
+                #     'model_hash': '68b1d64e0635f36d1a71d1b2c7000a69b6d02dcccfaa9893408f93fe603faf39',
+                #     'path': '/opt/prediction_store/84a655b173a84071b09f9e3cc5d4a683.wav',
+                #     'result': None,
+                #     'source_md5': '72e8250037da01f3b3695b3617ae1dd7',
+                #     'uid': '84a655b173a84071b09f9e3cc5d4a683'
+                # }
+                APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['result'] = req_json['predictions']
+                try:
+                    if os.path.isfile(APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['path']):
+                        os.remove(APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['path'])
+                except Exception as ex:
+                    eprint(str(ex))
+                    pass
+        return jsonify({
+            'received': True
+        })
+    except Exception as ex:
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'payload did not have valid signature',
+            'ex': str(ex),
+            'received': False
+        })
+    return jsonify({
+        'received': True
+    })
+
+
+@app.route('/getpredictionbyuid/<uid>', methods=['GET'])
+async def get_prediction_by_uid(uid):
+    global APP_STATE
+    try:
+        then = datetime.datetime.now()
+        batch_id = session.get('batchid')
+        if APP_STATE.session_signer.validate(batch_id) is not True:
+            return jsonify({
+                'msg': 'batch id not validated',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'prediction': None
+            })
+        else:
+            batch_id = APP_STATE.session_signer.unsign(batch_id).decode('utf-8')
+        while batch_id not in APP_STATE.batch_store and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if batch_id not in APP_STATE.batch_store:
+            return jsonify({
+                'msg': 'batch id not found',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'prediction': None
+            })
+        while 'predictions' not in APP_STATE.batch_store[batch_id] and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if 'predictions' not in APP_STATE.batch_store[batch_id]:
+            return jsonify({
+                'msg': 'predictions not found in data store',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'prediction': None
+            })
+        while uid not in APP_STATE.batch_store[batch_id]['predictions'] and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if uid not in APP_STATE.batch_store[batch_id]['predictions']:
+            return jsonify({
+                'msg': 'uid not found',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'prediction': None
+            })
+        while APP_STATE.batch_store[batch_id]['predictions'][uid]['result'] is None and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if APP_STATE.batch_store[batch_id]['predictions'][uid]['result'] is None:
+            return jsonify({
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'prediction': None
+            })
+        else:
+            return_value = APP_STATE.batch_store[batch_id]['predictions'][uid]['result']
+            del(APP_STATE.batch_store[batch_id]['predictions'][uid])
+            return jsonify({
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': True,
+                'prediction': return_value
+            })
+    except Exception as ex:
+        eprint("attempt to get prediction results failed")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'something went wrong',
+            'ex': str(ex)
+        })
+    return jsonify({
+        'msg': 'something went wrong'
+    })
+
+
+@app.route('/getspectrogramsbyuid/<uid>', methods=['GET'])
+async def get_spectrograms_by_uid(uid):
+    global APP_STATE
+    try:
+        then = datetime.datetime.now()
+        batch_id = session.get('batchid')
+        if APP_STATE.session_signer.validate(batch_id) is not True:
+            return jsonify({
+                'msg': 'batch id not validated',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'images': None
+            })
+        else:
+            batch_id = APP_STATE.session_signer.unsign(batch_id).decode('utf-8')
+        while batch_id not in APP_STATE.batch_store and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if batch_id not in APP_STATE.batch_store:
+            return jsonify({
+                'msg': 'batch id not found',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'images': None
+            })
+        while 'spectrograms' not in APP_STATE.batch_store[batch_id] and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if 'spectrograms' not in APP_STATE.batch_store[batch_id]:
+            return jsonify({
+                'msg': 'spectrograms not found in data store',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'images': None
+            })
+        while uid not in APP_STATE.batch_store[batch_id]['spectrograms'] and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if uid not in APP_STATE.batch_store[batch_id]['spectrograms']:
+            return jsonify({
+                'msg': 'uid not found',
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'images': None
+            })
+        while APP_STATE.batch_store[batch_id]['spectrograms'][uid]['images'] is None and (datetime.datetime.now() - then).total_seconds() < 15:
+            await asyncio.sleep(0.3)
+        if APP_STATE.batch_store[batch_id]['spectrograms'][uid]['images'] is None:
+            return jsonify({
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': False,
+                'images': None
+            })
+        else:
+            return_value = APP_STATE.batch_store[batch_id]['spectrograms'][uid]['images']
+            del(APP_STATE.batch_store[batch_id]['spectrograms'][uid])
+            return jsonify({
+                'batch_id': batch_id,
+                'uid': uid,
+                'ready': True,
+                'images': return_value
+            })
+    except Exception as ex:
+        eprint("attempt to get spectrogram results failed")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'something went wrong',
+            'ex': str(ex)
+        })
+    return jsonify({
+        'msg': 'something went wrong'
+    })
 
 
 @app.route('/')
 async def index():
+    global APP_STATE
+    batch_id = str(uuid.uuid4())
+    #eprint("batch id: "+batch_id)
+    session['batchid'] = APP_STATE.session_signer.sign(batch_id).decode('utf-8')
     """ Server route for the app's landing page """
-    return await render_template('index.html')
+    return await render_template('index.html', genre_ml_data={
+        'batch_id': batch_id
+    })
 
 
 # this deals with problem that sometimes

@@ -4,7 +4,7 @@ RUN python3 -m pip install --upgrade pip
 RUN apt-get update
 RUN apt-get install -y curl gnupg git build-essential ffmpeg libasound2-dev libsndfile1-dev
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install itsdangerous pandas numpy quart httpx
+RUN python3 -m pip install itsdangerous pandas numpy quart httpx dnspython
 RUN python3 -m pip install requests aiofiles SoundFile librosa Pillow matplotlib
 # Dev branch test
 RUN python3 -m pip install git+https://github.com/adaros92/CS467-Project.git@feature/additional_librosa_features
