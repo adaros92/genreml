@@ -131,6 +131,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-audio_classifier/FMA_model.h5
-audio_classifier/FMA_model_seperate_genres.h5
-audio_classifier/predictions.csv
+
+# FMA data
+fma_model_builder/data/FMA_images_dataset
+fma_model_builder/data/FMA_features_dataset
