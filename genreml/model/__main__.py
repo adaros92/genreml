@@ -1,7 +1,10 @@
 import argparse
+import urllib.request
+import logging
 
 from genreml.model.acquisition import extraction
 from genreml.model.processing import audio, config
+from genreml.model.cnn import cnn, config as model_config
 from genreml.model.utils import string_parsing, file_handling, logger
 
 
@@ -12,13 +15,15 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # Accept the operation to perform
-    parser.add_argument('operation', choices=['download', 'process'], help='''the operation to perform:
+    parser.add_argument('operation', choices=['download', 'process', 'classify'], help='''the operation to perform:
     download - search for and download an audio clip for the given song name and artist  
     process - extract data from an audio clip stored in a given file path
+    classify - categorize song data into genres using genreml machine learning model 
     ''')
     parser.add_argument('-s', '--song_name', help='the name of the song to download')
     parser.add_argument('-a', '--artist_name', help='the name of song\'s artist')
     parser.add_argument('-fp', '--file_path', help='the file path of an audio clip or directory of clips to process')
+    parser.add_argument('-yu', '--youtube_url', help='url to youtube song ')
     parser.add_argument('-ex', '--example', action='store_true', help='whether to run an example of feature extraction')
     parser.add_argument('-dp', '--destination_path', help='where to store the results of feature processing')
     parser.add_argument('-e', '--exclude_features', help='a list of feature names to exclude from processing')
@@ -46,6 +51,9 @@ def validate_args(args):
     elif args.operation == 'process' and not (args.file_path or args.example):
         raise RuntimeError(
             'you must either pass in a path to an audio file to process or a path to a directory with audio files')
+    elif args.operation == 'genres' and not (args.file_path or args.youtube_url or args.example):
+        raise RuntimeError(
+            'you must either pass in a path to an audio file or a url to YouTube song')
     elif args.operation == 'process' and args.example and not args.destination_path:
         raise RuntimeError(
             'if running an example feature extraction you must provide a destination path to save the results in'
@@ -60,6 +68,40 @@ def set_config(args):
     config.AudioConfig.CHECKPOINT_FREQUENCY = args.checkpoint_frequency
 
 
+def process_data(args):
+    processor = audio.AudioFiles()
+    features_to_exclude = string_parsing.str_to_collection(args.exclude_features, set)
+    cmap = args.cmap
+    if cmap.lower() == "none":
+        cmap = None
+    # Define the destination path
+    if not args.destination_path and not args.example:
+        # Use same path as input file_path if a -dp is not provided
+        feature_destination_path = file_handling.get_parent_directory(args.file_path)
+    else:
+        # Otherwise use the path provided via -dp; if running example, always require a destination path
+        feature_destination_path = args.destination_path
+    # Run the feature extraction
+    if args.example:
+        processor.extract_sample_fma_features(
+            destination_filepath=feature_destination_path, audio_format=args.audio_format)
+    else:
+        processor.extract_features(args.file_path, feature_destination_path,
+                                   features_to_exclude=features_to_exclude,
+                                   cmap=cmap, figure_width=float(args.figure_width),
+                                   figure_height=float(args.figure_height),
+                                   audio_format=args.audio_format
+                                   )
+
+
+def download_model():
+    logging.info("[genreml] Downloading model...")
+    with urllib.request.urlopen(model_config.FMAModelConfig.FMA_MODEL_URL) as f:
+        data = f.read()
+        open(model_config.FMAModelConfig.FMA_MODEL_PATH, 'wb').write(data)
+    logging.info("[genreml] Model download complete")
+
+
 def run(args):
     """ Run the operation as specified via CLI argument """
     # Download clips
@@ -68,29 +110,23 @@ def run(args):
         extractor.extract(args.song_name, args.artist_name)
     # Extract features from clips
     elif args.operation == 'process':
-        processor = audio.AudioFiles()
-        features_to_exclude = string_parsing.str_to_collection(args.exclude_features, set)
-        cmap = args.cmap
-        if cmap.lower() == "none":
-            cmap = None
-        # Define the destination path
-        if not args.destination_path and not args.example:
-            # Use same path as input file_path if a -dp is not provided
-            feature_destination_path = file_handling.get_parent_directory(args.file_path)
-        else:
-            # Otherwise use the path provided via -dp; if running example, always require a destination path
-            feature_destination_path = args.destination_path
-        # Run the feature extraction
-        if args.example:
-            processor.extract_sample_fma_features(
-                destination_filepath=feature_destination_path, audio_format=args.audio_format)
-        else:
-            processor.extract_features(args.file_path, feature_destination_path,
-                                       features_to_exclude=features_to_exclude,
-                                       cmap=cmap, figure_width=float(args.figure_width),
-                                       figure_height=float(args.figure_height),
-                                       audio_format=args.audio_format
-                                       )
+        process_data(args)
+
+    elif args.operation == 'classify':
+        # download FMA file if not located in model/cnn/data directory
+        if not file_handling.file_exists(model_config.FMAModelConfig.FMA_MODEL_PATH):
+            download_model()
+
+        # load keras model
+        model = cnn.CnnModel.from_h5_file(model_config.FMAModelConfig.FMA_MODEL_PATH)
+
+        # get input data
+
+        # process spectrogram & feature data
+
+        # run model prediction
+
+        # display prediction results
 
 
 def main():

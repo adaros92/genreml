@@ -106,3 +106,8 @@ def get_unique_file_name(file_id: str) -> str:
     random_salt = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(15))
     hasher.update("{0}{1}".format(file_name, random_salt).encode('utf-8'))
     return hasher.hexdigest()
+
+
+def get_root_dir() -> str:
+    """ Returns the path to the root directory of the genreml python package"""
+    return Path(__file__).parent.parent.parent
