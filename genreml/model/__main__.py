@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument('-yu', '--youtube_url', help='url to youtube song ')
     parser.add_argument('-ex', '--example', action='store_true', help='whether to run an example of feature extraction')
     parser.add_argument('-dp', '--destination_path', help='where to store the results of feature processing')
+    parser.add_argument('-mp', '--model_path', help='the file path to an .h5 file of a classification model')
     parser.add_argument('-e', '--exclude_features', help='a list of feature names to exclude from processing')
     parser.add_argument(
         '-af', '--audio_format', default=config.AudioConfig.AUDIO_FORMAT, help='the format of the audio to process')
@@ -126,12 +127,16 @@ def run(args):
                                        )
 
     elif args.operation == 'classify':
-        # download FMA file if not located in model/cnn/data directory
-        if not file_handling.file_exists(model_config.FMAModelConfig.FMA_MODEL_PATH):
-            download_model()
-
-        # load keras model
-        model = cnn.CnnModel.from_h5_file(model_config.FMAModelConfig.FMA_MODEL_PATH)
+        # check for model_path, default to FMA_model if not specified
+        if args.model_path:
+            print(args.model_path)
+            model = cnn.CnnModel.from_h5_file(args.model_path)
+        else:
+            # download FMA file if not located in model/cnn/data directory
+            if not file_handling.file_exists(model_config.FMAModelConfig.FMA_MODEL_PATH):
+                download_model()
+            # load keras model
+            model = cnn.CnnModel.from_h5_file(model_config.FMAModelConfig.FMA_MODEL_PATH)
 
         # get input data
         get_audio_data(args)
