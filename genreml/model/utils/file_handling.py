@@ -5,6 +5,7 @@ import hashlib
 import os
 import random
 import string
+import glob
 
 from pathlib import Path
 
@@ -106,6 +107,16 @@ def get_unique_file_name(file_id: str) -> str:
     random_salt = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(15))
     hasher.update("{0}{1}".format(file_name, random_salt).encode('utf-8'))
     return hasher.hexdigest()
+
+
+def delete_dir_contents(path):
+    files = glob.glob(f'{path}/*')
+    for f in files:
+        os.remove(f)
+
+
+def delete_file(path):
+    os.remove(path)
 
 
 def get_root_dir() -> str:

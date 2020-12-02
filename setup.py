@@ -1,5 +1,4 @@
 import pathlib
-import sys
 
 from setuptools import setup, find_packages
 
@@ -16,7 +15,7 @@ setup(
     url="https://github.com/adaros92/CS467-Project",
     version='0.3.4',
     install_requires=[
-        'requests', 'pandas', 'numpy', 'tabulate', 'ffmpeg', 'pydub', 'librosa', 'matplotlib', 'youtube_dl',
+        'requests', 'pandas', 'numpy', 'tabulate', 'pydub', 'librosa', 'matplotlib', 'youtube_dl',
         'tensorflow', 'sklearn'],
     tests_require=['pytest', 'pytest-cov'],
     license="MIT",

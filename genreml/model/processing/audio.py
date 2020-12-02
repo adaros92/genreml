@@ -56,9 +56,10 @@ class Audio(object):
             spec_generator = SpectrogramGenerator(
                 self.audio_signal, self.sample_rate, spectrogram_type=spectrogram_type)
         spectrogram = spec_generator.generate(cmap=cmap, figure_width=figure_width, figure_height=figure_height)
+        path = None
         if destination_filepath:
-            _ = self._save_figure(spec_generator, spectrogram, destination_filepath, spectrogram_type)
-        return spectrogram
+            path = self._save_figure(spec_generator, spectrogram, destination_filepath, spectrogram_type)
+        return spectrogram, path
 
     def to_melspectrogram(self, destination_filepath: str = None, spec_generator=None, cmap: str = None,
                           figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
@@ -109,7 +110,7 @@ class Audio(object):
     def extract_visual_features(
             self, destination_filepath: str = None, cmap: str = DisplayConfig.CMAP, exclusion_set: set = None,
             figure_width: float = DisplayConfig.FIGSIZE_WIDTH, figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
-    ) -> list:
+    ) -> tuple:
         visual_features_to_method_map = {
             "spectrogram": self.to_spectrogram,
             "melspectrogram": self.to_melspectrogram,
@@ -117,13 +118,15 @@ class Audio(object):
             "waveplot": self.to_waveplot
         }
         visual_features = []
+        visual_paths = []
         for feature_name, feature_method in visual_features_to_method_map.items():
             if feature_name not in exclusion_set:
-                visual_features.append(
-                    feature_method(
-                        destination_filepath, cmap=cmap, figure_width=figure_width, figure_height=figure_height)
-                )
-        return visual_features
+                visual, path = feature_method(destination_filepath, cmap=cmap, figure_width=figure_width,
+                                              figure_height=figure_height)
+                visual_features.append(visual)
+                visual_paths.append(path)
+
+        return visual_features, visual_paths
 
     def extract_features(self,
                          aggregate_features: bool = True,
@@ -160,6 +163,7 @@ class AudioCollection(dict):
     def __init__(self):
         super(AudioCollection, self).__init__()
         self.visual_features = []
+        self.visual_paths = []
         self.features = []
         self.feature_names = []
         self.features_saved = []
@@ -227,10 +231,12 @@ class AudioCollection(dict):
         try:
             if destination_filepath:
                 destination_filepath = destination_filepath.replace(" ", "")
-            self.visual_features.append(audio_object.extract_visual_features(
-                destination_filepath, cmap=cmap, exclusion_set=features_to_exclude,
-                figure_width=figure_width, figure_height=figure_height
-            ))
+                visual_features, visual_paths = audio_object.extract_visual_features(destination_filepath, cmap=cmap,
+                                                                                     exclusion_set=features_to_exclude,
+                                                                                     figure_width=figure_width,
+                                                                                     figure_height=figure_height)
+                self.visual_features.append(visual_features)
+                self.visual_paths.append(visual_paths)
             feature_dict, feature_names_list = audio_object.extract_features(exclusion_set=features_to_exclude)
             self.features.append(feature_dict)
             self.feature_names.append(feature_names_list)

@@ -137,3 +137,6 @@ fma_model_builder/data/FMA_images_dataset
 fma_model_builder/data/FMA_features_dataset
 /genreml/model/cnn/data/FMA_model.h5
 /fma_model_builder/data/FMA_model.h5
+
+# youtube-dl files
+/genreml/model/cnn/data/temp_song.mp3

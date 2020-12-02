@@ -1,3 +1,6 @@
+from genreml.model.processing import config as audio_config
+
+
 class YoutubeExtractionConfig:
     # URL to make request to for audio results
     SEARCH_URL = 'https://www.youtube.com/results'
@@ -13,6 +16,8 @@ class YoutubeExtractionConfig:
     POST_PROCESSOR_QUALITY = '192'
     # Preferred audio quality name
     PREFERRED_AUDIO_QUALITY = 'bestaudio/best'
+    # postprocessor audio format
+    AUDIO_FORMAT = audio_config.AudioConfig.AUDIO_FORMAT
 
 
 class SongExtractorConfig:

@@ -1,8 +1,11 @@
 import numpy as np
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from tensorflow import keras
+import pandas as pd
+import pickle
 
 from genreml.model.cnn import config, dataset as ds
 from genreml.model.model import base_model, input
@@ -42,6 +45,24 @@ class CnnModel(base_model.Model):
                                                    [dataset.test_features, dataset.test_images], dataset.test_labels),
                                                batch_size=batch_size, epochs=epochs)
 
+    @staticmethod
+    def _process_features(features: dict):
+        """ Extract feture data from audio source using genreml
+        :param features: feature data dictionary
+        :returns array of feature data scaled and sorted based on FEATURE_COLS list
+        """
+        features_sorted = []
+        feature_cols = pd.read_csv(config.FMAModelConfig.FEATURE_COLS)['feature_columns']
+        for col in feature_cols:
+            features_sorted.append(features[col])
+        features_sorted = np.array(features_sorted)
+        features_sorted = features_sorted[np.newaxis, :]
+
+        # load scaler object from binary exported from trained data
+        sc = pickle.load(open(config.FMAModelConfig.PKL_PATH, 'rb'))
+        features = sc.transform(features_sorted)[0]
+        return features
+
     def _preprocess_spectrogram(self, image: list) -> np.array:
         """ Reshape pixel data to IMG_HEIGHT x IMG_WIDTH
 
@@ -60,9 +81,11 @@ class CnnModel(base_model.Model):
         elif "spectrograms" not in input_data or "features" not in input_data:
             raise AttributeError(
                 "Both spectrograms and raw features need to be provided to model {0}".format(self.name))
-        spectrograms = self._preprocess_spectrogram(input_data["spectrograms"])
-        features = np.array(input_data["features"])
-        prediction = self.model.predict([np.array([features]), np.array(spectrograms)])
+        spectrogram = self._preprocess_spectrogram(input_data["spectrograms"])
+        features = self._process_features(input_data["features"])
+        features = np.array(features)
+        prediction = self.model.predict([np.array([features]), np.array([spectrogram])])
+
         return prediction
 
     def export_h5(self, path='./'):
