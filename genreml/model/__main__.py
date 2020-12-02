@@ -170,7 +170,8 @@ def run(args):
 
         # delete temporary files
         file_handling.delete_dir_contents(model_config.FMAModelConfig.FEATURES_PATH)
-        file_handling.delete_file(args.file_path)
+        if args.youtube_url:
+            file_handling.delete_file(args.file_path)
 
 
 def main():
