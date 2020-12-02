@@ -190,6 +190,21 @@ To change export color images and change image size to X in wide by Y in high
 genreml process -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000" -cmap None -fw 15.0 -fh 5.0
 ```
 
+To predict genres from an audio file
+```
+genreml classify -fp "/Users/adamsrosales/Documents/audio-clips/fma_small/000/000002.mp3"
+```
+
+To predict genres from a youtube URL
+```
+genreml classify -yu "https://www.youtube.com/watch?v=Ui-_IUylvoA"
+```
+
+To predict genres from a compatible h5 model
+```
+genreml classify -mp "/Users/adamsrosales/Downloads/FMA_model.h5" -yu "https://www.youtube.com/watch?v=Ui-_IUylvoA"
+```
+
 # Using genreml as a Package in Python
 
 You can import genreml after a successful installation like any Python package
