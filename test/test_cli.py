@@ -13,6 +13,8 @@ class MockArgs(object):
     audio_format = None
     checkpoint_frequency = None
     destination_path = None
+    youtube_url = None
+    model_path = None
 
 
 def test_validate_args():
@@ -48,5 +50,20 @@ def test_validate_args():
         __main__.validate_args(mock_args)
     mock_args.example = False
     mock_args.file_path = False
+    with pytest.raises(RuntimeError):
+        __main__.validate_args(mock_args)
+    # Test classify operation
+    mock_args.operation = 'classify'
+    mock_args.file_path = 'some_path'
+    __main__.validate_args(mock_args)
+    mock_args.youtube_url = 'some_url'
+    __main__.validate_args(mock_args)
+    mock_args.youtube_url = 'some_url'
+    mock_args.model_path = 'some_path'
+    __main__.validate_args(mock_args)
+    # Missing required classify attributes
+    mock_args.example = False
+    mock_args.file_path = False
+    mock_args.youtube_url = False
     with pytest.raises(RuntimeError):
         __main__.validate_args(mock_args)

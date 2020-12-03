@@ -98,14 +98,15 @@ class Audio(object):
     def to_waveplot(self, destination_filepath: str = None, waveplot_generator=None, cmap: str = None,
                     figure_width: float = DisplayConfig.FIGSIZE_WIDTH,
                     figure_height: float = DisplayConfig.FIGSIZE_HEIGHT
-                    ):
+                    ) -> tuple:
         logging.info("generating waveplot for {0}".format(self.file_name))
         if not waveplot_generator:
             waveplot_generator = WavePlotGenerator(self.audio_signal, self.sample_rate)
         waveplot = waveplot_generator.generate(cmap=cmap, figure_width=figure_width, figure_height=figure_height)
+        path = None
         if destination_filepath:
-            _ = self._save_figure(waveplot_generator, waveplot, destination_filepath, "waveplot")
-        return waveplot
+            path = self._save_figure(waveplot_generator, waveplot, destination_filepath, "waveplot")
+        return waveplot, path
 
     def extract_visual_features(
             self, destination_filepath: str = None, cmap: str = DisplayConfig.CMAP, exclusion_set: set = None,
@@ -206,7 +207,6 @@ class AudioCollection(dict):
         try:
             logging.info("loading audio file from {0}".format(file_location))
             audio_signal, sample_rate = librosa.load(file_location)
-            print(audio_signal)
             audio_signal = self.clip_audio_signal(audio_signal, sample_rate, AudioConfig.MIN_CLIP_LENGTH)
             self[file_location] = Audio(
                 file_handling.get_filename(file_location), audio_signal, sample_rate, file_type=file_type)

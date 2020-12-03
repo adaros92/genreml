@@ -1,5 +1,4 @@
 import argparse
-import urllib.request
 import logging
 import pkg_resources
 from PIL import Image
@@ -9,7 +8,7 @@ import pandas as pd
 from genreml.model.acquisition import extraction
 from genreml.model.processing import audio, config
 from genreml.model.cnn import cnn, config as model_config
-from genreml.model.utils import string_parsing, file_handling, logger
+from genreml.model.utils import string_parsing, file_handling, logger, model_utils
 
 
 def parse_args():
@@ -86,14 +85,6 @@ def get_audio_data(args):
         return
 
 
-def download_model():
-    logging.info("[genreml] Downloading model...")
-    with urllib.request.urlopen(model_config.FMAModelConfig.FMA_MODEL_URL) as f:
-        data = f.read()
-        open(model_config.FMAModelConfig.FMA_MODEL_PATH, 'wb').write(data)
-    logging.info("[genreml] Model download complete")
-
-
 def run(args):
     """ Run the operation as specified via CLI argument """
     # Download clips
@@ -134,48 +125,28 @@ def run(args):
         else:
             # download FMA file if not located in model/cnn/data directory
             if not file_handling.file_exists(model_config.FMAModelConfig.FMA_MODEL_PATH):
-                download_model()
+                model_utils.download_model()
             # load keras model
             model = cnn.CnnModel.from_h5_file(model_config.FMAModelConfig.FMA_MODEL_PATH)
 
         # get input data
         get_audio_data(args)
 
-        # extract data from audio file
-        audio_files = audio.AudioFiles()
-        output_path = model_config.FMAModelConfig.SPECT_IMG_PATH
-        audio_files.extract_features(file_locations=args.file_path,
-                                     destination_filepath=output_path,
-                                     features_to_exclude={'spectrogram', 'chromagram', 'waveplot'},
-                                     figure_height=model_config.CnnModelConfig.IMG_HEIGHT / 100,
-                                     figure_width=model_config.CnnModelConfig.IMG_WIDTH / 100)
-
-        # # open .png file and return raw pixel data
-        path = audio_files.visual_paths[0][0]
-        spect_img = Image.open(path).convert('L')
-        spect_img = spect_img.resize((model_config.CnnModelConfig.IMG_WIDTH, model_config.CnnModelConfig.IMG_HEIGHT))
-        spect_img = list(spect_img.getdata())
-
-        # build model input object
-        input_obj = cnn.CnnInput(spectrograms=spect_img,
-                                 features=audio_files.features_saved[0])
-
         # run model prediction
-        prediction = model.predict(input_data=input_obj)
+        prediction = model.get_prediction(audio_path=args.file_path)
 
         # display prediction results
         # Log top 5 predictions to console
         n = 5
         top_n_genres = []
-        top_n = np.argsort(prediction[0])
+        top_n = np.argsort(prediction)
         top_n = top_n[::-1][:n]
         for i, val in enumerate(top_n, start=1):
             top_n_genres.append(pd.read_csv(model_config.FMAModelConfig.LABELS_PATH)['category'][val])
         print(f'\nTop 5 predicted genres: {top_n_genres}\n')
 
-        # delete temporary files
-        file_handling.delete_dir_contents(model_config.FMAModelConfig.FEATURES_PATH)
         if args.youtube_url:
+            # delete temporary audio file
             file_handling.delete_file(args.file_path)
 
 
