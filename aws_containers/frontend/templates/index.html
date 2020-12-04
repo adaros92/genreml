@@ -17,27 +17,42 @@
         <div class="row">
             <div class="col">
                 <p id="uploadMenuItem" class="lead">
-                    <a id="selectMusicButton" href="#" class="btn btn-lg btn-secondary" onclick='(document.getElementById("selectMusicToUpload")).click();' >Upload Audio Clip</a>
-                    <form id="file-upload" style="display:none" action="/uploads"  enctype="multipart/form-data" method="POST">
-                        <input id="selectMusicToUpload" style="display:none" type="file" name="fileUploadForm" accept="audio/*" onchange='(document.getElementById("uploadMenuItem")).style.display="none";(document.getElementById("startUploadMenuItem")).style.display="block";(document.getElementById("uploadMusicButton")).click();'/>
-                        <div id="startUploadMenuItem" style="display:none">
-                            <input id="uploadMusicButton" style="display:none" type="submit" value="Add to libary"/>
-                        </div>
+                    <button id="selectMusicButton" class="btn btn-lg btn-secondary" onclick='handleFileUpload()'>
+                        <span id="uploadInProgress" style="display:none" class="spinner-grow spinner-grow-sm"></span>
+                        <span>Upload Audio Clip</span>
+                    </button>
+                    
+                </p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <p class="lead">
+                    <form action="./download_youtube" method = "POST">
+                     <input style='display:inline-block' name="text" placeholder="Enter the URL to a Youtube video"/>
+                    <input style='display:inline-block' type="submit" value="Predict From Youtube Link" onclick="(document.getElementById('youtubeInProgress')).style.display = 'inline-block'"/>
+                    <span id="youtubeInProgress" style="display:none" class="spinner-grow spinner-grow-sm"></span>
                     </form>
                 </p>
             </div>
-            <!-- <div class="col">
-                <p class="lead">
-                  <a href="#" class="btn btn-lg btn-secondary">Use a YouTube Link</a>
-                </p>
-            </div> -->
         </div>
     </main>
     <script>
         window.genreML = {
             "batchID": "{{ genre_ml_data['batch_id'] }}"
-        }
-        console.log("{{ genre_ml_data['batch_id'] }}")
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        document.getElementById('homeNav').classList.add('active');
+        function handleFileUpload(){
+            (document.getElementById("selectMusicToUpload")).click();
+            (document.getElementById("uploadInProgress")).style.display="inline-block";
+            setTimeout(function(){(document.getElementById("uploadInProgress")).style.display="none";}, 120000);
+        };
+		function handleUploadForm(callback){
+			(document.getElementById("startUploadMenuItem")).style.display="block";
+			(document.getElementById("uploadMusicButton")).click();
+			return callback;
+		}
     </script>
 
 {% endblock content %}

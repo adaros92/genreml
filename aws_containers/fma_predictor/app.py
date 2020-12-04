@@ -129,8 +129,8 @@ async def feature_spectrogram_uploads(work):
                 eprint('problem with clip spectrograms request')
                 eprint(spectrograms['ex'])
                 return (False, dict(), dict(), dict())
-            spectrogram = {'data':base64.b64decode(spectrograms['image'])}
-            return (True, features, spectrogram, item)
+            spectrogram = base64.b64decode(spectrograms['image'])
+            return (True, features, spectrogram, item, hashlib.md5(raw_data).hexdigest())
         except Exception as ex:
             eprint("failure in spectrogram and feature parsing after return from api calls")
             eprint(str(ex))
@@ -160,7 +160,9 @@ async def run_model(model, processed):
         song_class = classy.Song()
         features = processed[1]
         spectrogram = processed[2]
-        spectrogram = spectrogram['data']
+        #spectrogram = spectrogram['data']
+        clip_hash = processed[-1]
+        spectro_hash = hashlib.md5(spectrogram).hexdigest()
         gray_path = get_uid()+'.gray.png'
         with open(gray_path,'wb') as f:
             f.write(spectrogram)
@@ -174,7 +176,7 @@ async def run_model(model, processed):
         song_class.spectrograms.append(img_data)
         if not isinstance(features, dict):
             features = json.loads(features)
-        eprint("creating series")
+        #eprint("creating series")
         series = pd.Series(features)
         # code from audio-classifier
         features_sorted = []
@@ -203,23 +205,35 @@ async def run_model(model, processed):
         # calculate average of each clip prediction self
         song_class.genre_prediction = song_class.genre_prediction / count
         # log top-n genres to console
-        eprint("running get_predictions")
+        #eprint("running get_predictions")
         prediction_arr = song_class.get_predictions()
         # this should be refactored to be part of the api
         # as a parameter that can be passed
         # Log top n predictions to console
         n = 5
         top_n_genres = []
+        top_n_pairs = []
         top_n = np.argsort(prediction_arr)
         top_n = top_n[::-1][:n]
-        eprint("converting predictions to text")
+        #eprint("converting predictions to text")
         for i, val in enumerate(top_n, start=1):
             top_n_genres.append(classy.LABELS_DICT[val])
+            top_n_pairs.append([classy.LABELS_DICT[val],np.float64(val)])
         cleanup_files(cleanup_paths)
-        eprint("|".join([str(x) for x in top_n_genres]))
+        #eprint("|".join([str(x) for x in top_n_genres]))
+        pairs = []
+        try:
+            json.dumps(top_n_pairs)
+            pairs = top_n_pairs
+        except Exception as ex:
+            eprint(ex)
+            pass
         return {
             "predictor_id": APP_STATE.uid,
             "predictions": "|".join([str(x) for x in top_n_genres]),
+            "prediction_clip_hash": clip_hash,
+            "prediction_spectro_hash": spectro_hash,
+            "prediction_pairs": pairs,
             **original_task
         }
     except Exception as ex:
@@ -246,7 +260,7 @@ def log_feature_spectrogram_failures(processed):
             return
 
 
-async def runner(run_limit):
+async def predictor(run_limit):
     global APP_STATE
     event_loop = APP_STATE.loop
     model = tf.keras.models.load_model(APP_STATE.model_path)
@@ -258,11 +272,14 @@ async def runner(run_limit):
     for i in range(run_limit):
         async with httpx.AsyncClient() as client:
             try:
-                work = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/predictions', data=APP_STATE.signer.sign('prediction_request'), timeout=60.0)
+                work = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/predictions', data=APP_STATE.signer.sign(APP_STATE.uid), timeout=60.0)
                 work.raise_for_status()
                 prep = await feature_spectrogram_uploads(work.json())
                 try:
-                    prediction = await run_model(model, prep)
+                    if prep[0] is True:
+                        prediction = await run_model(model, prep)
+                    else:
+                        continue
                 except Exception as ex:
                     eprint("failure in prediction attempt")
                     eprint(str(ex))
@@ -287,6 +304,57 @@ async def runner(run_limit):
                 continue
 
 
+async def check_before_exit():
+    async with httpx.AsyncClient() as client:
+        check = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/predictsafetoreboot', data=APP_STATE.signer.sign(APP_STATE.uid), timeout=60.0)
+        check = check.json()
+        return check["safe"]
+
+
+async def runner(run_limit):
+    global APP_STATE
+    event_loop = APP_STATE.loop
+    model = tf.keras.models.load_model(APP_STATE.model_path)
+    if re.match("^[0-9]+$", run_limit) is None:
+        return
+    run_limit = int(run_limit)
+    if run_limit <= 0:
+        return
+    await predictor(str(run_limit))
+    while await check_before_exit() is False:
+        await predictor(str(run_limit))
+    async with httpx.AsyncClient() as client:
+        then = datetime.datetime.now()
+        eprint("initiating restarts: "+then.isoformat())
+        try:
+            restart_features = await client.post(get_srv_record_url('GENREML_FEATURES_PORT', 'GENREML_FEATURES_ADDRESS', 'GENREML_FEATURES_SCHEMA', False)+'/restartsignal', data=APP_STATE.serializer.dumps({'restart':True}), timeout=5.0)
+        except Exception as ex:
+            eprint(str(ex))
+            pass
+        try:
+            restart_spectrograms = await client.post(get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA', False)+'/restartsignal', data=APP_STATE.serializer.dumps({'restart':True}), timeout=5.0)
+        except Exception as ex:
+            eprint(str(ex))
+            pass
+        eprint("restarts sent: "+str((then-datetime.datetime.now()).total_seconds()))
+
+
 event_loop = asyncio.get_event_loop()
 APP_STATE = app_state(event_loop)
+health_check = False
+while health_check is False:
+    try:
+        check = requests.get(get_srv_record_url('GENREML_FEATURES_PORT', 'GENREML_FEATURES_ADDRESS', 'GENREML_FEATURES_SCHEMA', False)+'/test', timeout=5.0)
+        check.raise_for_status()
+        health_check = True
+    except Exception as ex:
+        pass
+health_check = False
+while health_check is False:
+    try:
+        check = requests.get(get_srv_record_url('GENREML_SPECTRO_PORT', 'GENREML_SPECTRO_ADDRESS', 'GENREML_SPECTRO_SCHEMA', False)+'/test', timeout=5.0)
+        check.raise_for_status()
+        health_check = True
+    except Exception as ex:
+        pass
 event_loop.run_until_complete(runner(os.environ['RUN_LIMIT']))

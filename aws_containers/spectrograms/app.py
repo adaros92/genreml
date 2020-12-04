@@ -203,16 +203,28 @@ async def get_dbspectrogram():
     return jsonify(await handle_spectrogram_request(await request.get_data(), 'dbspectrogram'))
 
 
+@app.route('/restartsignal', methods=['POST'])
+async def restart_signal():
+    global APP_STATE
+    req_data = await request.get_data()
+    try:
+        req_json = APP_STATE.serializer.loads(req_data)
+        if 'restart' in req_json and req_json['restart'] is True and 'ALLOW_RESTART_SIGNAL' in os.environ and os.environ['ALLOW_RESTART_SIGNAL'] == 'true':
+            sys.exit(0)
+    except Exception as ex:
+        eprint(str(ex))
+
+
 async def handle_work_queue_spectrograms(work):
     global APP_STATE
     if 'work' not in work:
-        return (None, dict(), dict(), dict())
+        return (None, dict())
     if 'item' not in work:
-        return (None, dict(), dict(), dict())
+        return (None, dict())
     if work['work'] is False:
-        return (None, dict(), dict(), dict())
+        return (None, dict())
     if work['item'] is None:
-        return (None, dict(), dict(), dict())
+        return (None, dict())
     item = work['item']
     if 'ext' in work:
         ext = work['ext']
@@ -232,21 +244,28 @@ async def handle_work_queue_spectrograms(work):
             return_data = await gen_spectrogram(raw_data, file_location, item['spectro_type'])
     except Exception as ex:
         eprint(str(ex))
+        return (False, dict())
         pass
     try:
         if os.path.isfile(file_location):
             os.remove(file_location)
     except Exception as ex:
         eprint(str(ex))
+        return (False, dict())
         pass
-    return {**item, **work, 'spectrograms': return_data}
+    return (True, {**item, **work, 'spectrograms': return_data})
 
 
 async def watcher(event_loop):
     while True:
         try:
             then = datetime.datetime.now()
-            await puller()
+            if 'ENABLE_PULL_SERVICE' in os.environ and os.environ['ENABLE_PULL_SERVICE'] == 'true':
+                await puller()
+                while await check_before_exit() is False:
+                    await puller()
+            if 'NO_PERSISTENCE' in os.environ and os.environ['NO_PERSISTENCE'] == 'true':
+                sys.exit(0)
             if (datetime.datetime.now()-then).total_seconds() < 2.0:
                 await asyncio.sleep(5)
         except Exception as ex:
@@ -256,28 +275,41 @@ async def watcher(event_loop):
     await asyncio.sleep(0.1)
 
 
+async def check_before_exit():
+    async with httpx.AsyncClient() as client:
+        check = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/spectrogramsafetoreboot', data=APP_STATE.signer.sign(APP_STATE.uid), timeout=60.0)
+        check = check.json()
+        return check["safe"]
+
+
 async def puller():
-    then = datetime.datetime.now()
-    while (datetime.datetime.now()-then).total_seconds() < 15:
-        async with httpx.AsyncClient() as client:
-            try:
-                work = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/spectrograms', data=APP_STATE.signer.sign('spectrogram_request'), timeout=600.0)
-                work.raise_for_status()
-            except Exception as ex:
-                eprint("error client call")
-                eprint(str(ex))
-                await asyncio.sleep(0.5)
-                return
-            post_data = await handle_work_queue_spectrograms(work.json())
+    run_limit = 10
+    if 'RUN_LIMIT' in os.environ and (re.match("^[0-9]+$", os.environ['RUN_LIMIT']) is not None):
+        run_limit = int(os.environ['RUN_LIMIT'])
+    for i in range(run_limit):
+        then = datetime.datetime.now()
+        while (datetime.datetime.now()-then).total_seconds() < 15:
             async with httpx.AsyncClient() as client:
                 try:
-                    send_back = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/finishedspectrograms', data=APP_STATE.serializer.dumps(post_data), timeout=600.0)
-                    send_back.raise_for_status()
+                    work = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/spectrograms', data=APP_STATE.signer.sign('spectrogram_request'), timeout=600.0)
+                    work.raise_for_status()
                 except Exception as ex:
-                    eprint("error in posting spectrogram results")
+                    eprint("error client call")
                     eprint(str(ex))
+                    await asyncio.sleep(0.5)
                     return
-        await asyncio.sleep(0.3)
+                post_data = await handle_work_queue_spectrograms(work.json())
+                if post_data[0] is True:
+                    post_data = post_data[1]
+                    async with httpx.AsyncClient() as client:
+                        try:
+                            send_back = await client.post(get_srv_record_url('GENREML_FRONTEND_PORT', 'GENREML_FRONTEND_ADDRESS', 'GENREML_FRONTEND_SCHEMA', False)+'/finishedspectrograms', data=APP_STATE.serializer.dumps(post_data), timeout=600.0)
+                            send_back.raise_for_status()
+                        except Exception as ex:
+                            eprint("error in posting spectrogram results")
+                            eprint(str(ex))
+                            return
+            await asyncio.sleep(0.3)
 
 
 event_loop = None

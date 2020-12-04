@@ -1,49 +1,111 @@
 {% extends "layout.html" %}
 {% block content %}
     <script>
-        window.genreML = {
+        buildView = function(){
+            var documentFragment = document.createDocumentFragment();
+            var navBar = document.getElementById('mainNavBar');
+            var predictCurrentNav = document.createElement('a');
+            predictCurrentNav.setAttribute('href', '#');
+            predictCurrentNav.classList.add('nav-link');
+            predictCurrentNav.classList.add('active');
+            predictCurrentNav.setAttribute('id','predictNav');
+            predictCurrentNav.innerText = "Prediction";
+            documentFragment.appendChild(predictCurrentNav);
+            var spacer = document.createElement('a');
+            spacer.setAttribute('href', '#');
+            spacer.classList.add('nav-link');
+            spacer.classList.add('active');
+            spacer.setAttribute('id','predictNav');
+            spacer.innerText = " ";
+            documentFragment.appendChild(spacer);
+            var uploadBtn = document.createElement('button');
+            uploadBtn.setAttribute('id', 'selectMusicButton');
+            uploadBtn.classList.add('btn');
+            uploadBtn.classList.add('btn-sm');
+            uploadBtn.classList.add('btn-secondary');
+            uploadBtn.setAttribute('onclick', 'handleFileUpload()');
+            var uploadBtnSpinner = document.createElement('span');
+            uploadBtnSpinner.classList.add('spinner-grow');
+            uploadBtnSpinner.classList.add('spinner-grow-sm');
+            uploadBtnSpinner.style.display = 'none';
+            uploadBtnSpinner.setAttribute('id','uploadInProgress');
+            uploadBtn.appendChild(uploadBtnSpinner);
+            var uploadBtnTxt = document.createElement('span');
+            uploadBtnTxt.innerText = 'Upload';
+            uploadBtn.appendChild(uploadBtnTxt);
+            documentFragment.appendChild(uploadBtn);
+            navBar.appendChild(documentFragment);
+        }
+        buildView();
+        genreML = {
             "batchID": "{{ genre_ml_data['batch_id'] }}"
         };
         console.log("{{ genre_ml_data['batch_id'] }}");
-        window.genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
-        function getViewPredictions(view){
+        genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
+        getViewPredictions = view => {
+            view.clip_obtained = false;
+            view.get_clip = function(){
+                var origin = window.location.origin;
+                fetch(origin+'/getaclip')
+                .then(res=>res.json())
+                .then(data => {
+                    if(data.ready === true && data.sample !== null){
+                        var el = document.getElementById('predictionRow');
+                        var audio = document.createElement('audio');
+                        audio.setAttribute('id','audioSample');
+                        audio.setAttribute('type','audio/wav');
+                        audio.setAttribute('src','data:audio/wav;base64,'+data.sample);
+                        audio.setAttribute('controls','controls');
+                        audio.setAttribute('seekable','seekable');
+                        el.appendChild(audio);
+                    }
+                });
+            };
             view.predict_uids.forEach(prediction=>{
                 prediction.getPrediction = predict=>{
                     var origin = window.location.origin;
                     fetch(origin+'/getpredictionbyuid/'+predict.uid)
                     .then(res=>res.json())
                     .then(data => {
-                        console.dir(data);
+                        //console.dir(data);
                         if(data.ready === true){
+                            console.dir(data);
                             predict.ready = true;
-                            predict.value = data.prediction.split('|');
+                            predict.value = data.prediction.predictions.split('|');
                             document.getElementById(data.uid).innerText = "Prediction: "+predict.value.join(" ");
+                            try{
+                                if(view.clip_obtained === false){
+                                    view.get_clip();
+                                }
+                            }catch(e){
+                                console.dir(e);
+                            }
                         }else{
-                            if (predict.trialCount < 3) {
+                            if (predict.trialCount < 5) {
                                 predict.trialCount++;
                                 predict.timeout = setTimeout(predict.getPrediction(predict), 200);
                             }else{
                                 document.getElementById(predict.uid).innerText = "Network error, unable to get prediction.";
                             }
                         }
-                    })
+                    });
                 };
                 if(prediction.ready !== true || prediction.value === ''){
                     prediction.trialCount = 0;
-                    prediction.timeout = setTimeout(prediction.getPrediction(prediction), 100);
+                    prediction.timeout = setTimeout(prediction.getPrediction(prediction, ), 100);
                 };
                 prediction.msg = view.msg;
             });
-        }
-        window.genreML.viewData.forEach(view=>getViewPredictions(view));
-        function getViewSpectrograms(view){
+        };
+        genreML.viewData.forEach(view=>getViewPredictions(view));
+        getViewSpectrograms = view => {
             view.spectro_uids.forEach(spectrogram=>{
                 spectrogram.getSpectrogram = spectro=>{
                     var origin = window.location.origin;
                     fetch(origin+'/getspectrogramsbyuid/'+spectro.uid)
                     .then(res=>res.json())
                     .then(data => {
-                        console.dir(data);
+                        //console.dir(data);
                         if(data.ready === true){
                             spectro.ready = true;
                             spectro.value = data;
@@ -55,7 +117,7 @@
                                 document.getElementById(type+"_"+spectro.uid).setAttribute('style','display:block');
                             });
                         }else{
-                            if (spectro.trialCount < 3) {
+                            if (spectro.trialCount < 5) {
                                 spectro.trialCount++;
                                 spectro.timeout = setTimeout(spectro.getSpectrogram(spectro), 200);
                             }else{
@@ -64,7 +126,7 @@
                                 document.getElementById("predictionRow").appendChild(el);
                             }
                         }
-                    })
+                    });
                 };
                 if(spectrogram.ready !== true || spectrogram.value === ''){
                     spectrogram.trialCount = 0;
@@ -72,7 +134,12 @@
                 };
             });
         }
-        window.genreML.viewData.forEach(view=>getViewSpectrograms(view));
+        genreML.viewData.forEach(view=>getViewSpectrograms(view));
+        function handleFileUpload(){
+            (document.getElementById("selectMusicToUpload")).click();
+            (document.getElementById("uploadInProgress")).style.display="inline-block";
+            setTimeout(function(){(document.getElementById("uploadInProgress")).style.display="inline-block";}, 120000);
+        };
     </script>
     <main role="main" class="inner cover">
         <div class="row">

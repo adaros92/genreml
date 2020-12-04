@@ -47,6 +47,18 @@ async def get_features(file_location):
         audio_signal, sample_rate = librosa.load(file_location)
         song_class = classy.Song()
         ds = song_class._Song__get_features(audio_signal, sample_rate)
+        test_hashes = {'72e8250037da01f3b3695b3617ae1dd7', 'be7b6b0bd584a7ac62e4d2ef620eea09'}
+        if 'TEST_FLAG' in os.environ and os.environ['TEST_FLAG'] == 'true':
+            try:
+                with open(file_location, 'rb') as f:
+                    th = hashlib.md5(f.read()).hexdigest()
+                    if th in test_hashes:
+                        eprint(th)
+                        eprint(ds.to_json())
+            except Exception as ex:
+                eprint('failed on test sample code')
+                eprint(ex)
+                pass
         return (True, ds.to_json())
     except Exception as ex:
         eprint("feature extraction failed")
@@ -109,6 +121,18 @@ async def generate_features():
         return jsonify(return_data)
     cleanup_files()
     return jsonify({'msg':'something went wrong'})
+
+
+@app.route('/restartsignal', methods=['POST'])
+async def restart_signal():
+    global APP_STATE
+    req_data = await request.get_data()
+    try:
+        req_json = APP_STATE.serializer.loads(req_data)
+        if 'restart' in req_json and req_json['restart'] is True and 'ALLOW_RESTART_SIGNAL' in os.environ and os.environ['ALLOW_RESTART_SIGNAL'] == 'true':
+            sys.exit(0)
+    except Exception as ex:
+        eprint(str(ex))
 
 
 event_loop = None

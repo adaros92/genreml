@@ -16,6 +16,8 @@ import dns.resolver as resolver
 import numpy as np
 import audio_classifier as classy
 import aiofiles as aiof
+from genreml.model.utils.file_handling import get_filetype, get_filename
+import downloader
 
 
 app = Quart(__name__, static_folder='./static', static_url_path='/static')
@@ -45,6 +47,8 @@ class app_state:
         self.prediction_queue = asyncio.Queue()
         self.spectrograms_queue = asyncio.Queue()
         self.batch_store = dict()
+        self.predictor_connections = dict()
+        self.spectrogram_connections = dict()
 
 
 def get_srv_record_url(port_key, address_key, schema_key, test_endpoint=True):
@@ -82,7 +86,25 @@ def get_uid():
     return str(uuid.uuid4()).replace('-', '')
 
 
-async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_all=True):
+async def clean_up_file_later(path):
+    return
+    global APP_STATE
+    try:
+        TASK_LIMIT = 600
+        then = datetime.datetime.now()
+        await asyncio.sleep(TASK_LIMIT)
+        if os.path.isfile(path):
+            os.remove(path)
+            eprint("deleted stale file: "+str(path))
+        if (datetime.datetime.now()-then).total_seconds() < TASK_LIMIT:
+            eprint("timer on file cleanup failed!")
+    except Exception as ex:
+        eprint("exception in stale task cleanup")
+        eprint(str(ex))
+        pass
+
+
+async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_all=True, write_raw_data=True, passed_path=''):
     global APP_STATE
     return_state = True
     spectrogram_work_items = list()
@@ -95,8 +117,13 @@ async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_
         # previous hard coded variables now from state class
         filestore_directory = APP_STATE.filestore_directory
         upload_path = filestore_directory+"/"+data_uid+'.'+ext
-        async with aiof.open(upload_path, 'wb') as f:
-            await f.write(raw_data)
+        if write_raw_data:
+            async with aiof.open(upload_path, 'wb') as f:
+                await f.write(raw_data)
+        else:
+            upload_path = passed_path
+        if not os.path.isfile(upload_path):
+            raise Exception("could not write data in create_clips or youtube file does not exist")
         eprint("defining class")
         song_class = classy.Song()
         song_class.path = upload_path
@@ -105,11 +132,27 @@ async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_
         eprint("starting clips")
         if use_all is False:
             song_class.clips = [song_class.clips[0]]
+        clip_count = 0
         for clip in song_class.clips:
+            clip_count += 1
             try:
                 uid = get_uid()
                 # export wav file
                 scaled = np.int16(clip / np.max(np.abs(clip)) * 32767)
+                if clip_count == 1:
+                    classy.write('/opt/clip_store/'+uid+'.'+'wav', song_class.sr, scaled)
+                    clip_item = {
+                        'path': '/opt/clip_store/'+uid+'.'+'wav',
+                        'filename': uid+'.'+'wav',
+                        'ext': 'wav',
+                        'uid': uid,
+                        'batch_id': bid,
+                        'source_md5': md5,
+                        'model_hash': model_hash,
+                        'result': None
+                    }
+                    APP_STATE.batch_store[bid]['play_clips'][uid] = clip_item
+                    APP_STATE.loop.create_task(clean_up_file_later('/opt/clip_store/'+uid+'.'+'wav'))
                 classy.write('/opt/prediction_store/'+uid+'.'+'wav', song_class.sr, scaled)
                 prediction_work_item = {
                     'path': '/opt/prediction_store/'+uid+'.'+'wav',
@@ -124,6 +167,7 @@ async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_
                 prediction_work_items.append(prediction_work_item)
                 APP_STATE.batch_store[bid]['predictions'][uid] = prediction_work_item
                 await APP_STATE.prediction_queue.put(prediction_work_item)
+                APP_STATE.loop.create_task(clean_up_file_later('/opt/prediction_store/'+uid+'.'+'wav'))
                 eprint("prediction in the queue")
                 classy.write('/opt/spectrogram_store/'+uid+'.'+'wav', song_class.sr, scaled)
                 spectrogram_work_item = {
@@ -139,6 +183,7 @@ async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_
                 spectrogram_work_items.append(spectrogram_work_item)
                 APP_STATE.batch_store[bid]['spectrograms'][uid] = spectrogram_work_item
                 await APP_STATE.spectrograms_queue.put(spectrogram_work_item)
+                APP_STATE.loop.create_task(clean_up_file_later('/opt/spectrogram_store/'+uid+'.'+'wav'))
                 eprint("spectrogram in the queue")
             except Exception as ex:
                 eprint("failure in clip processing")
@@ -158,6 +203,133 @@ async def create_clips(raw_data, bid, md5, model_hash, filename, name, ext, use_
     return (return_state, prediction_work_items, spectrogram_work_items)
 
 
+async def clean_up_task_later(batch_id):
+    global APP_STATE
+    try:
+        TASK_LIMIT = 600
+        then = datetime.datetime.now()
+        await asyncio.sleep(TASK_LIMIT)
+        if batch_id not in APP_STATE.batch_store:
+            return
+        if 'time' in APP_STATE.batch_store[batch_id]:
+            then = APP_STATE.batch_store[batch_id]['time']
+        if len(APP_STATE.batch_store[batch_id]['predictions'].keys()) == 0 and len(APP_STATE.batch_store[batch_id]['spectrograms'].keys()) == 0:
+            if (datetime.datetime.now()-then).total_seconds() >= TASK_LIMIT:
+                eprint("deleted stale task: "+str(batch_id))
+            del(APP_STATE.batch_store[batch_id])
+        if batch_id not in APP_STATE.batch_store:
+            return
+        if (datetime.datetime.now()-then).total_seconds() < TASK_LIMIT:
+            eprint("timer on task cleanup failed!")            
+        if (datetime.datetime.now()-then).total_seconds() >= TASK_LIMIT:
+            del(APP_STATE.batch_store[batch_id])
+            eprint("deleted stale task: "+str(batch_id))
+    except Exception as ex:
+        eprint("exception in stale task cleanup")
+        eprint(str(ex))
+        pass
+
+
+@app.route('/download_youtube', methods=['POST'])
+async def process_youtube_video():
+    global APP_STATE
+    batch_id = session.get('batchid')
+    eprint("work request incoming")
+    if APP_STATE.session_signer.validate(batch_id) is not True:
+        eprint("bad batch id")
+        return redirect(url_for('index'))
+    else:
+        batch_id = APP_STATE.session_signer.unsign(batch_id).decode('utf-8')
+        eprint(str(batch_id))
+        APP_STATE.batch_store[batch_id] = {
+            'batch_id': batch_id,
+            'time': datetime.datetime.now(),
+            'predictions': dict(),
+            'spectrograms': dict(),
+            'play_clips': dict(),
+            'model_hash': APP_STATE.model_hash
+        }
+        APP_STATE.loop.create_task(clean_up_task_later(batch_id))
+    background_work = []
+    """ Route for downloading a Youtube video and performing feature extraction + prediction """
+    try:
+        filestore_directory = APP_STATE.filestore_directory
+        # Get the Youtube link from the request
+        youtube_url = (await request.form)['text']
+        # Only process results if valid youtube video link
+        if "youtube" in youtube_url and youtube_url[:8] == "https://" and "v=" in youtube_url:
+            filepath = downloader.download_link(youtube_url, directory_path=filestore_directory)
+            async with aiof.open(filepath, 'rb') as f:
+                raw_data = await f.read()
+            file_hash = hashlib.md5(raw_data).hexdigest()
+            start_work = await create_clips(raw_data, batch_id, file_hash, APP_STATE.model_hash, filepath.split('/')[-1], filepath.split('/')[-1].split('.')[0], filepath.split('/')[-1].split('.')[-1], False, False, filepath)
+            background_work.append({
+                'md5': file_hash,
+                'work': start_work,
+                'filename': filepath.split('/')[-1]
+            })
+    except Exception as ex:
+        eprint("error in youtube dl endpoint")
+        eprint(str(ex))
+        pass
+    try:
+        if len(background_work) > 0:
+            view_items = await render_prediction_view(background_work)
+            return await render_template('predictions.html', genre_ml_data={
+                'batch_id': batch_id,
+                'view_data': view_items
+            })          
+    except Exception as ex:
+        eprint("error rendering view")
+        eprint(str(ex))
+        return redirect(url_for('index'))
+    return redirect(url_for('index'))
+
+
+async def render_prediction_view(background_work):
+    view_items = []
+    for item in background_work:
+        try:
+            view_item = {
+                'md5': item['md5'],
+                'filename': item['filename'],
+                'spectro_uids': list(),
+                'predict_uids': list()
+            }
+            if item['md5'] != 'unknown':
+                view_item['msg'] = 'Please wait while we are getting your results in the background.'
+            else:
+                view_item['msg'] = 'Something went wrong, please try again or use a different file.'
+            if len(item['work']) < 3:
+                view_items.append(view_item)
+                continue
+            spectrogram_work_items = item['work'][2]
+            prediction_work_items = item['work'][1]
+            for spectro in spectrogram_work_items:
+                if 'uid' in spectro:
+                    view_item['spectro_uids'].append({
+                        'uid': spectro['uid'],
+                        'value': '',
+                        'ready': False
+                    })
+            for predict in prediction_work_items:
+                if 'uid' in predict:
+                    view_item['predict_uids'].append({
+                        'uid': predict['uid'],
+                        'value': '',
+                        'ready': False
+                    })
+            view_items.append(view_item)
+        except Exception as ex:
+            eprint("error rendering view")
+            eprint(str(ex))
+            continue
+    if len(view_items) > 0:
+        return view_items
+    else:
+        raise Exception("No view generated. render_prediction_view generated view of 0 items")
+
+
 @app.route('/uploads', methods=['POST'])
 async def file_upload_handler():
     global APP_STATE
@@ -174,8 +346,10 @@ async def file_upload_handler():
             'time': datetime.datetime.now(),
             'predictions': dict(),
             'spectrograms': dict(),
+            'play_clips': dict(),
             'model_hash': APP_STATE.model_hash
         }
+    APP_STATE.loop.create_task(clean_up_task_later(batch_id))
     files = (await request.files).getlist("fileUploadForm")
     background_work = []
     for f in files:
@@ -212,42 +386,16 @@ async def file_upload_handler():
         else:
             eprint("file wrong data type")
     # (return_state, prediction_work_items, spectrogram_work_items)
-    view_items = []
-    for item in background_work:
-        view_item = {
-            'md5': item['md5'],
-            'filename': item['filename'],
-            'spectro_uids': list(),
-            'predict_uids': list()
-        }
-        if item['md5'] != 'unknown':
-            view_item['msg'] = 'Please wait while we are getting your results in the background.'
-        else:
-            view_item['msg'] = 'Something went wrong, please try again or use a different file.'
-        if len(item['work']) < 3:
-            view_items.append(view_item)
-            continue
-        spectrogram_work_items = item['work'][2]
-        prediction_work_items = item['work'][1]
-        for spectro in spectrogram_work_items:
-            if 'uid' in spectro:
-                view_item['spectro_uids'].append({
-                    'uid': spectro['uid'],
-                    'value': '',
-                    'ready': False
-                })
-        for predict in prediction_work_items:
-            if 'uid' in predict:
-                view_item['predict_uids'].append({
-                    'uid': predict['uid'],
-                    'value': '',
-                    'ready': False
-                })
-        view_items.append(view_item)
-    return await render_template('predictions.html', genre_ml_data={
-        'batch_id': batch_id,
-        'view_data': view_items
-    })
+    try:
+        view_items = await render_prediction_view(background_work)
+        return await render_template('predictions.html', genre_ml_data={
+            'batch_id': batch_id,
+            'view_data': view_items
+        })
+    except Exception as ex:
+        eprint("error rendering view")
+        eprint(str(ex))
+        return redirect(url_for('index'))
     return redirect(url_for('index'))
 
 
@@ -268,7 +416,8 @@ async def prep_queue_item(data):
         return jsonify(data)
     if 'path' not in data['item']:
         return jsonify(data)
-    eprint(str(data))
+    if not os.path.isfile(data['item']['path']):
+        return jsonify(data)
     async with aiof.open(data['item']['path'], 'rb') as f:
         data['item']['data'] = base64.b64encode(await f.read()).decode('utf-8')
     send_back = jsonify(data)
@@ -280,16 +429,23 @@ async def prep_queue_item(data):
 @app.route('/predictions', methods=['POST'])
 async def get_prediction_work():
     global APP_STATE
+    predictor_id = None
     #eprint("incoming prediction request")
     req_data = await request.get_data()
     try:
         if APP_STATE.signer.validate(req_data):
             #eprint("validated prediction request")
+            predictor_id = APP_STATE.signer.unsign(req_data).decode('utf-8')
+            APP_STATE.predictor_connections[predictor_id] = True
             data = await long_poll_queuer(APP_STATE.prediction_queue)
+            del(APP_STATE.predictor_connections[predictor_id])
             return await prep_queue_item(data)
     except Exception as ex:
         eprint("error when prepping prediction queue")
         eprint(str(ex))
+        if predictor_id is not None:
+            if predictor_id in APP_STATE.predictor_connections:
+                del(APP_STATE.predictor_connections[predictor_id])
         return jsonify({
             'msg': 'could not send item',
             'ex': str(ex),
@@ -302,19 +458,52 @@ async def get_prediction_work():
     })
 
 
+@app.route('/predictsafetoreboot', methods=['POST'])
+async def predict_safe_to_reboot():
+    req_data = await request.get_data()
+    if APP_STATE.signer.validate(req_data):
+        #eprint("validated prediction request")
+        predictor_id = APP_STATE.signer.unsign(req_data).decode('utf-8')
+        if predictor_id in APP_STATE.predictor_connections:
+            del(APP_STATE.predictor_connections[predictor_id])
+    if len(APP_STATE.predictor_connections.keys()) > 0:
+        return jsonify({"safe": True})
+    return jsonify({"safe": False})
+
+
+@app.route('/spectrogramsafetoreboot', methods=['POST'])
+async def spectrogram_safe_to_reboot():
+    req_data = await request.get_data()
+    if APP_STATE.signer.validate(req_data):
+        #eprint("validated prediction request")
+        spectrogram_id = APP_STATE.signer.unsign(req_data).decode('utf-8')
+        if spectrogram_id in APP_STATE.spectrogram_connections:
+            del(APP_STATE.spectrogram_connections[spectrogram_id])
+    if len(APP_STATE.spectrogram_connections.keys()) > 0:
+        return jsonify({"safe": True})
+    return jsonify({"safe": False})
+
+
 @app.route('/spectrograms', methods=['POST'])
 async def get_spectrogram_work():
     global APP_STATE
+    spectrogram_id = None
     #eprint("incoming spectrogram request")
     req_data = await request.get_data()
     try:
         if APP_STATE.signer.validate(req_data):
             #eprint("validated spectrogram request")
+            spectrogram_id = APP_STATE.signer.unsign(req_data).decode('utf-8')
+            APP_STATE.spectrogram_connections[spectrogram_id] = True
             data = await long_poll_queuer(APP_STATE.spectrograms_queue)
+            del(APP_STATE.spectrogram_connections[spectrogram_id])
             return await prep_queue_item(data)
     except Exception as ex:
         eprint("error when prepping predispectrogram queue")
         eprint(str(ex))
+        if spectrogram_id is not None:
+            if spectrogram_id in APP_STATE.spectrogram_connections:
+                del(APP_STATE.spectrogram_connections[spectrogram_id])
         return jsonify({
             'msg': 'payload did not have valid signature',
             'ex': str(ex),
@@ -388,7 +577,7 @@ async def post_predictions():
                 #     'source_md5': '72e8250037da01f3b3695b3617ae1dd7',
                 #     'uid': '84a655b173a84071b09f9e3cc5d4a683'
                 # }
-                APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['result'] = req_json['predictions']
+                APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['result'] = {x:req_json[x] for x in req_json if x.startswith('predict')}
                 try:
                     if os.path.isfile(APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['path']):
                         os.remove(APP_STATE.batch_store[req_json['batch_id']]['predictions'][req_json['uid']]['path'])
@@ -562,6 +751,58 @@ async def get_spectrograms_by_uid(uid):
     })
 
 
+# this route and method is dirty, it will hold the connection until it times out
+# or it will return what is being requested. It shouldn't be a problem but 
+# it was expediently coded
+@app.route('/getaclip', methods=['GET'])
+async def get_a_clip():
+    global APP_STATE
+    try:
+        then = datetime.datetime.now()
+        batch_id = session.get('batchid')
+        if APP_STATE.session_signer.validate(batch_id) is not True:
+            return jsonify({
+                'msg': 'batch id not validated',
+                'batch_id': batch_id,
+                'ready': False,
+                'sample': None
+            })
+        else:
+            batch_id = APP_STATE.session_signer.unsign(batch_id).decode('utf-8')
+        while 'play_clips' not in APP_STATE.batch_store[batch_id]:
+            await asyncio.sleep(0.3)
+        while len(APP_STATE.batch_store[batch_id]['play_clips'].values()) == 0:
+            await asyncio.sleep(0.3)
+        for item in APP_STATE.batch_store[batch_id]['play_clips'].values():
+            if 'path' in item:
+                clip = item
+                if os.path.isfile(clip['path']):
+                    clip['ready'] = True
+                    async with aiof.open(clip['path'], 'rb') as f:
+                        clip['sample'] = base64.b64encode(await f.read()).decode('utf-8')
+                    os.remove(clip['path'])
+                    return jsonify(clip)
+        return jsonify({
+            'msg': 'sample does not exist',
+            'ready': False,
+            'sample': None
+        })
+    except Exception as ex:
+        eprint("attempt to get sample failed")
+        eprint(str(ex))
+        return jsonify({
+            'msg': 'something went wrong',
+            'ex': str(ex),
+            'ready': False,
+            'sample': None
+        })
+    return jsonify({
+        'msg': 'something went wrong',
+        'ready': False,
+        'sample': None
+    })
+
+
 @app.route('/')
 async def index():
     global APP_STATE
@@ -570,6 +811,30 @@ async def index():
     session['batchid'] = APP_STATE.session_signer.sign(batch_id).decode('utf-8')
     """ Server route for the app's landing page """
     return await render_template('index.html', genre_ml_data={
+        'batch_id': batch_id
+    })
+
+
+@app.route('/about')
+async def about():
+    global APP_STATE
+    batch_id = str(uuid.uuid4())
+    #eprint("batch id: "+batch_id)
+    session['batchid'] = APP_STATE.session_signer.sign(batch_id).decode('utf-8')
+    """ Server route for the app's landing page """
+    return await render_template('about.html', genre_ml_data={
+        'batch_id': batch_id
+    })
+
+
+@app.route('/contacts')
+async def contacts():
+    global APP_STATE
+    batch_id = str(uuid.uuid4())
+    #eprint("batch id: "+batch_id)
+    session['batchid'] = APP_STATE.session_signer.sign(batch_id).decode('utf-8')
+    """ Server route for the app's landing page """
+    return await render_template('contacts.html', genre_ml_data={
         'batch_id': batch_id
     })
 
