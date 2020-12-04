@@ -28,6 +28,19 @@ import tensorflow as tf
 from PIL import Image
 import audio_classifier as classy
 import datetime
+import random
+import decimal
+import math
+
+
+def all_digit_timestamp(date):
+    return int(math.floor(date.timestamp())*10**len(list(reversed(decimal.Decimal(date.timestamp()%1).as_tuple().digits))))+int(sum([list(reversed(decimal.Decimal(date.timestamp()%1).as_tuple().digits))[i]*10**i for i in range(len(list(reversed(decimal.Decimal(date.timestamp()%1).as_tuple().digits))))]))
+
+def get_timestamp_seed():
+    return all_digit_timestamp(datetime.datetime.now())
+
+
+random.seed(get_timestamp_seed())
 
 
 class app_state:
@@ -320,6 +333,7 @@ async def runner(run_limit):
     await predictor(str(run_limit))
     while await check_before_exit() is False:
         await predictor(str(run_limit))
+        await asyncio.sleep(random.choice([0.05, 0.1, 0.15]))
     async with httpx.AsyncClient() as client:
         then = datetime.datetime.now()
         eprint("initiating restarts: "+then.isoformat())
