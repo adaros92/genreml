@@ -17,5 +17,5 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def predict(self, input_data: input.ModelInput) -> np.array:
+    def _predict(self, input_data: input.ModelInput) -> np.array:
         pass

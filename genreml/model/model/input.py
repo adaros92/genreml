@@ -4,7 +4,8 @@ class ModelInput(object):
 
     def __init__(self, name: str, **kwargs) -> None:
         self.name = name
-        for input_name, input_value in kwargs:
+        for input_name, input_value in kwargs.items():
+            # print(f'name: {input_name} value: {input_value}')
             self.__dict__[input_name] = input_value
 
     def __contains__(self, key: str) -> bool:

@@ -69,8 +69,15 @@ class YouTubeDownloader(object):
             # Get the full Youtube URL pointing to the best matching video to download
             content_url = content_request.url
         # Download the video to the destination_filepath
-        with youtube_dl.YoutubeDL({
+        ydl_opts = {
             'format': self.config.PREFERRED_AUDIO_QUALITY,
-            'outtmpl': destination_filepath
-        }) as ydl:
+            'outtmpl': destination_filepath + '.%(ext)s',
+            'postprocessors': [{
+                'key': self.config.POST_PROCESSOR_KEY,
+                'preferredcodec': self.config.AUDIO_FORMAT,
+                'preferredquality': self.config.POST_PROCESSOR_QUALITY,
+            }],
+            'keepvideo': False
+        }
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             ydl.download([content_url])

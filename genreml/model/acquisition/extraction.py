@@ -1,6 +1,5 @@
 import logging
 
-
 from genreml.model.acquisition.youtube import YouTubeDownloader
 from genreml.model.acquisition.config import SongExtractorConfig
 from genreml.model.processing.config import AudioConfig
@@ -32,11 +31,12 @@ class SongExtractor(object):
         if source == 'youtube':
             return YouTubeDownloader()
 
-    def extract(self, song_name, artist, file_path=None):
+    def extract(self, song_name=None, artist=None, file_path=None, yt_url=None):
         """ Extracts data for the given song name and artist using the active downloader
         :param string song_name: the name of the song to download
         :param string artist: the name of the song's artist
         :param file_path: an optional path to save the song file to (must be an absolute path including the song file)
+        :param yt_url: an optional param to extract song data directly from YouTube url
         """
         # If no full path given, construct one from config
         if not file_path:
@@ -47,5 +47,8 @@ class SongExtractor(object):
             file_path = "{0}{1}".format(full_path, file_name)
         logging.info("Changing working directory to {0}".format(file_path))
         file_handling.change_directory_to(file_path)
-        search_query = '{0}+{1}'.format(song_name, artist)
-        self.downloader.download(file_path, search_values=[search_query])
+        if yt_url:
+            self.downloader.download(file_path, url=yt_url)
+        else:
+            search_query = '{0}+{1}'.format(song_name, artist)
+            self.downloader.download(file_path, search_values=[search_query])
