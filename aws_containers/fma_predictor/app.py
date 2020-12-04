@@ -215,25 +215,22 @@ async def run_model(model, processed):
         top_n_pairs = []
         top_n = np.argsort(prediction_arr)
         top_n = top_n[::-1][:n]
+        full_genre_scores = []
+        for index in range(len(prediction_arr)):
+            full_genre_scores.append([classy.LABELS_DICT[index], np.float64(prediction_arr[index])])
         #eprint("converting predictions to text")
-        for i, val in enumerate(top_n, start=1):
+        for i, val in enumerate(top_n, start=0):
             top_n_genres.append(classy.LABELS_DICT[val])
-            top_n_pairs.append([classy.LABELS_DICT[val],np.float64(val)])
+            top_n_pairs.append([classy.LABELS_DICT[val], np.float64(prediction_arr[val])])
         cleanup_files(cleanup_paths)
         #eprint("|".join([str(x) for x in top_n_genres]))
-        pairs = []
-        try:
-            json.dumps(top_n_pairs)
-            pairs = top_n_pairs
-        except Exception as ex:
-            eprint(ex)
-            pass
         return {
             "predictor_id": APP_STATE.uid,
             "predictions": "|".join([str(x) for x in top_n_genres]),
             "prediction_clip_hash": clip_hash,
             "prediction_spectro_hash": spectro_hash,
-            "prediction_pairs": pairs,
+            "prediction_pairs": top_n_pairs,
+            "prediction_full_scores": full_genre_scores,
             **original_task
         }
     except Exception as ex:

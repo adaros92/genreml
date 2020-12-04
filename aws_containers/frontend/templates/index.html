@@ -29,8 +29,8 @@
             <div class="col">
                 <p class="lead">
                     <form action="./download_youtube" method = "POST">
-                     <input style='display:inline-block' name="text" placeholder="Enter the URL to a Youtube video"/>
-                    <input style='display:inline-block' type="submit" value="Predict From Youtube Link" onclick="(document.getElementById('youtubeInProgress')).style.display = 'inline-block'"/>
+                     <input class="yt-dl" name="text" placeholder="Enter the URL to a Youtube video"/>
+                    <input class="yt-dl" type="submit" value="Predict From Youtube Link" onclick="(document.getElementById('youtubeInProgress')).style.display = 'inline-block'"/>
                     <span id="youtubeInProgress" style="display:none" class="spinner-grow spinner-grow-sm"></span>
                     </form>
                 </p>
@@ -52,7 +52,7 @@
 			(document.getElementById("startUploadMenuItem")).style.display="block";
 			(document.getElementById("uploadMusicButton")).click();
 			return callback;
-		}
+        }
     </script>
 
 {% endblock content %}

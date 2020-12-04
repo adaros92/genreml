@@ -32,6 +32,7 @@ class app_state:
         self.loop = loop
         self.signer = itsdangerous.Signer(os.environ['GENREML_SIGNING_TOKEN'])
         self.serializer = itsdangerous.Serializer(os.environ['GENREML_SIGNING_TOKEN'])
+        self.uid = str(uuid.uuid4())
 
 
 def get_srv_record_url(port_key, address_key, schema_key, test_endpoint=True):

@@ -33,7 +33,13 @@ a:hover {
   background-color: #fff;
   border: .05rem solid #fff;
 }
-
+.yt-dl {
+  display: inline-block;
+  background-color: #fff;
+  color: #333;
+  font-weight: 700;
+  text-shadow: none;
+}
 
 /*
  * Base structure

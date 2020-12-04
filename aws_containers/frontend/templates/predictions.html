@@ -1,7 +1,9 @@
 {% extends "layout.html" %}
 {% block content %}
-    <script>
-        buildView = function(){
+    <script type="module">
+        import randomColor from './static/randomColor.js';
+        window.randomColor = randomColor;
+        window.buildView = function(){
             var documentFragment = document.createDocumentFragment();
             var navBar = document.getElementById('mainNavBar');
             var predictCurrentNav = document.createElement('a');
@@ -36,13 +38,13 @@
             documentFragment.appendChild(uploadBtn);
             navBar.appendChild(documentFragment);
         }
-        buildView();
-        genreML = {
+        window.buildView();
+        window.genreML = {
             "batchID": "{{ genre_ml_data['batch_id'] }}"
         };
         console.log("{{ genre_ml_data['batch_id'] }}");
-        genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
-        getViewPredictions = view => {
+        window.genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
+        window.getViewPredictions = view => {
             view.clip_obtained = false;
             view.get_clip = function(){
                 var origin = window.location.origin;
@@ -50,7 +52,7 @@
                 .then(res=>res.json())
                 .then(data => {
                     if(data.ready === true && data.sample !== null){
-                        var el = document.getElementById('predictionRow');
+                        var el = document.getElementById('predictionAudio');
                         var audio = document.createElement('audio');
                         audio.setAttribute('id','audioSample');
                         audio.setAttribute('type','audio/wav');
@@ -58,6 +60,7 @@
                         audio.setAttribute('controls','controls');
                         audio.setAttribute('seekable','seekable');
                         el.appendChild(audio);
+                        el.appendChild(document.createElement('br'));
                     }
                 });
             };
@@ -72,7 +75,49 @@
                             console.dir(data);
                             predict.ready = true;
                             predict.value = data.prediction.predictions.split('|');
-                            document.getElementById(data.uid).innerText = "Prediction: "+predict.value.join(" ");
+                            predict.response_data = data;
+                            document.getElementById("top5-chart").style.display = "block";
+                            document.getElementById("chartButton").style.display = "block";
+                            var labels = data.prediction.prediction_pairs.map(x=>x[0])
+                            var predictionScores = data.prediction.prediction_pairs.map(x=>x[1])
+                            var fullLabels = data.prediction.prediction_full_scores.map(x=>x[0])
+                            var fullPredictionScores = data.prediction.prediction_full_scores.map(x=>x[1])
+                            document.getElementById(data.uid).innerText = "Top 5: "+predict.value.join(" ");
+                            // basic chart js example from https://tobiasahlin.com/blog/chartjs-charts-to-get-you-started/
+                            predict.chart = new Chart(document.getElementById("top5-chart"), {
+                                type: 'horizontalBar',
+                                data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: "Genre Score",
+                                    backgroundColor: labels.map(x=>{x;return randomColor({luminosity: 'bright'});}),
+                                    data: predictionScores,
+                                }]},
+                                options: {
+                                    legend: { display: false },
+                                    title: {
+                                        display: true,
+                                        text: "Genre Score"
+                                    }
+                                }
+                            });
+                            predict.fullChart = new Chart(document.getElementById("all-genre-chart"), {
+                                type: 'horizontalBar',
+                                data: {
+                                labels: fullLabels,
+                                datasets: [{
+                                    label: "Genre Score",
+                                    backgroundColor: fullLabels.map(x=>{x;return randomColor({luminosity: 'bright'});}),
+                                    data: fullPredictionScores,
+                                }]},
+                                options: {
+                                    legend: { display: false },
+                                    title: {
+                                        display: true,
+                                        text: "Genre Score"
+                                    }
+                                }
+                            });
                             try{
                                 if(view.clip_obtained === false){
                                     view.get_clip();
@@ -97,8 +142,8 @@
                 prediction.msg = view.msg;
             });
         };
-        genreML.viewData.forEach(view=>getViewPredictions(view));
-        getViewSpectrograms = view => {
+        window.genreML.viewData.forEach(view=>getViewPredictions(view));
+        window.getViewSpectrograms = view => {
             view.spectro_uids.forEach(spectrogram=>{
                 spectrogram.getSpectrogram = spectro=>{
                     var origin = window.location.origin;
@@ -134,18 +179,39 @@
                 };
             });
         }
-        genreML.viewData.forEach(view=>getViewSpectrograms(view));
-        function handleFileUpload(){
+        window.genreML.viewData.forEach(view=>getViewSpectrograms(view));
+        window.handleFileUpload = function(){
             (document.getElementById("selectMusicToUpload")).click();
             (document.getElementById("uploadInProgress")).style.display="inline-block";
             setTimeout(function(){(document.getElementById("uploadInProgress")).style.display="inline-block";}, 120000);
         };
+        window.chartButtonHandler = ()=>{
+            if(document.getElementById("all-genre-chart").style.display === "none"){
+                document.getElementById("chartButtonText").innerText = "Top 5 Genres Chart";
+                document.getElementById("all-genre-chart").style.display = "block";
+                document.getElementById("top5-chart").style.display = "none";
+                return;
+            }else{
+                if(document.getElementById("top5-chart").style.display === "none"){
+                    document.getElementById("chartButtonText").innerText = "All Genres Chart";
+                    document.getElementById("top5-chart").style.display = "block";
+                    document.getElementById("all-genre-chart").style.display = "none";
+                    return;
+                }
+            }
+        }
     </script>
     <main role="main" class="inner cover">
         <div class="row">
             <div class="col">
                 <br>
-                <h1>Predictions</h1>
+                <h1>Predictions</h1>                
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <br>
+                <div id="predictionAudio"></div>                
             </div>
         </div>
         <br>
@@ -163,6 +229,20 @@
                     {% for prediction in view['predict_uids'] %}
                     <div class="row" id="predictionRow">
                         <h4><strong id="{{prediction['uid']}}">{{view['msg']}}</strong></h4>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <span></span>
+                    </div>
+                    <div class="row">
+                        <canvas style="display:none" id="top5-chart" width="800" height="450"></canvas>
+                        <canvas style="display:none" id="all-genre-chart" width="800" height="450"></canvas>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <button id="chartButton" style="display:none" class="btn btn-secondary btn-sm" onclick="chartButtonHandler()">
+                            <span id="chartButtonText">All Genres Chart</span>
+                        </button>
                         <br>
                     </div>
                     {% endfor %}
