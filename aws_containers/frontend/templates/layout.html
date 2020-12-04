@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta name="googlebot" content="noindex,nofollow,noimageindex,noarchive,nocache,nosnippet">
+	<meta name="robots" content="noindex,nofollow,noimageindex,noarchive,nocache,nosnippet">
+	<meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Joshua Kinzel, Gregory Noetzel, Adams Rosales, Sean Sargent">
+	<title>AI Audio Classifier</title>
+	<!-- Bootstrap core CSS -->
+	<link rel="stylesheet" href="static/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+	<!-- Custom CSS -->
+	<link rel="stylesheet" href="static/style.css" crossorigin="anonymous">
+	<!-- Favicons -->
+	<meta name="msapplication-config" content="/docs/4.5/assets/img/favicons/browserconfig.xml">
+	<meta name="theme-color" content="#563d7c">
+	<link rel="icon" type="image/png" href="static/favicon.png" />
+</head>
+<body class="text-center">
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+		<header class="masthead mb-auto">
+			<div class="inner">
+				<h3 class="masthead-brand">AI Audio Classifier</h3>
+				<nav id="mainNavBar" class="nav nav-masthead justify-content-center">
+					<a id='homeNav' class="nav-link" href="/">Home</a>
+					<a id='aboutNav' class="nav-link" href="./about">About</a>
+					<a id='contactsNav' class="nav-link" href="./contacts">Contact</a>
+				</nav>
+			</div>
+		</header>
+		{% block content %}{% endblock %}
+		<footer class="mastfoot mt-auto">
+			<div class="inner">
+				<p>An app created by <a href="https://www.linkedin.com/in/adamsr09/">Adams Rosales</a>, <a href="mailto:kinzelj@oregonstate.edu">Joshua Kinzel</a>, <a href="mailto:noetzelg@oregonstate.edu">Gregory Noetzel</a>, & <a href="mailto:genremlsms@gmail.com">Sean Sargent</a></p>
+			</div>
+			<div class="row">
+				<div class="col">
+					<p id="uploadFormGroup" style="display:none" class="lead">
+						<form id="file-upload" style="display:none" action="/uploads"  enctype="multipart/form-data" method="POST">
+						<input id="selectMusicToUpload" style="display:none" type="file" name="fileUploadForm" accept="audio/*" onchange='handleUploadForm(function(){(document.getElementById("startUploadMenuItem")).style.display="none";})()'/>
+							<div id="startUploadMenuItem" style="display:none">
+								<input id="uploadMusicButton" style="display:none" type="submit" value="Add to libary"/>
+							</div>
+						</form>
+					</p>
+				</div>
+			</div>
+		</footer>
+	</div>
+</body>
+	<!-- JS, Popper.js, and jQuery -->
+	<script src="static/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+	<script src="static/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+	<script src="static/bootstrap.min.js" integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV" crossorigin="anonymous"></script>
+	<script src="static/Chart.bundle.min.js" integrity="sha512-vBmx0N/uQOXznm/Nbkp7h0P1RfLSj0HQrFSzV8m7rOGyj30fYAOKHYvCNez+yM8IrfnW0TCodDEjRqf6fodf/Q==" crossorigin="anonymous"></script>
+	<script type="module" src="static/randomColor.js" integrity="sha384-TtzqeqzhsDfQdzD0bmtGG+U8br6Wik8vUEFXFx+LTov/MwtnIwXZmRBluoFf3LQy" crossorigin="anonymous"></script>
+	<script>
+		function handleUploadForm(callback){
+			(document.getElementById("startUploadMenuItem")).style.display="block";
+			(document.getElementById("uploadMusicButton")).click();
+			return callback;
+		}
+	</script>
+</html>

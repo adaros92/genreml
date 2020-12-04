@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <h1>AI Audio Classifier</h1>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+                <p class="lead">We trained a convolutional neural network to predict music genres from audio data. Try it out below!</p>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+                <p id="uploadMenuItem" class="lead">
+                    <button id="selectMusicButton" class="btn btn-lg btn-secondary" onclick='handleFileUpload()'>
+                        <span id="uploadInProgress" style="display:none" class="spinner-grow spinner-grow-sm"></span>
+                        <span>Upload Audio Clip</span>
+                    </button>
+                    
+                </p>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <p class="lead">
+                    <form action="./download_youtube" method = "POST">
+                     <input class="yt-dl" name="text" placeholder="Enter the URL to a Youtube video"/>
+                    <input class="yt-dl" type="submit" value="Predict From Youtube Link" onclick="(document.getElementById('youtubeInProgress')).style.display = 'inline-block'"/>
+                    <span id="youtubeInProgress" style="display:none" class="spinner-grow spinner-grow-sm"></span>
+                    </form>
+                </p>
+            </div>
+        </div>
+    </main>
+    <script>
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        document.getElementById('homeNav').classList.add('active');
+        function handleFileUpload(){
+            (document.getElementById("selectMusicToUpload")).click();
+            (document.getElementById("uploadInProgress")).style.display="inline-block";
+            setTimeout(function(){(document.getElementById("uploadInProgress")).style.display="none";}, 120000);
+        };
+		function handleUploadForm(callback){
+			(document.getElementById("startUploadMenuItem")).style.display="block";
+			(document.getElementById("uploadMusicButton")).click();
+			return callback;
+        }
+    </script>
+
+{% endblock content %}

@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <h1>AI Audio Classifier</h1>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col">
+                <p class="lead">We trained a convolutional neural network to predict music genres from audio data. This project produced a model for predicting the top-n genres from user-specified audio files that similarly yielded an accuracy metric of some significant value above random classification. This site is the web deployment of that model to try it out and get results.</p>
+                <br>
+                <p class="lead">The model was built and trained using keras on the Free Music Archive (FMA) dataset, validated by a custom suite of tests, and deployed using Amazon Web Suite’s (AWS) suite of hosting solutions. Submitting an audio file on genreml.net will redirect you to a page that displays your audio file as a waveplot, spectrogram, mel spectrogram, and chromogram and also predicts the top n genres the file could be according to our model.</p>
+            </div>
+        </div>
+        <br>
+    </main>
+    <script>
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        document.getElementById('aboutNav').classList.add('active');
+    </script>
+
+{% endblock content %}

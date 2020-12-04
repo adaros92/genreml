@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <div class="row">
+                    <h1>CS 467 Top-n Music Genre Classification Neural Network Project Group</h1>
+                    <br>
+                    <br>
+                </div>
+                <div class="row">
+                    <h3><a id='contactsNav' class="nav-link" href="https://www.linkedin.com/in/adamsr09/">Adams Rosales</a></h3>
+                    <br>
+                </div>
+                <div class="row">
+                    <h3><a id='contactsNav' class="nav-link" href="mailto:noetzelg@oregonstate.edu">Gregory Noetzel</a></h3>
+                    <br>
+                </div>
+                <div class="row">
+                    <h3><a id='contactsNav' class="nav-link" href="mailto:kinzelj@oregonstate.edu">Joshua Kinzel</a></h3>
+                    <br>
+                </div>
+                <div class="row">
+                    <h3><a id='contactsNav' class="nav-link" href="mailto:genremlsms@gmail.com">Sean Sargent</a></h3>
+                    <br>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        document.getElementById('contactsNav').classList.add('active');
+    </script>
+
+{% endblock content %}

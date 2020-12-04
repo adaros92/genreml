@@ -1,0 +1,265 @@
+{% extends "layout.html" %}
+{% block content %}
+    <script type="module">
+        import randomColor from './static/randomColor.js';
+        window.randomColor = randomColor;
+        window.buildView = function(){
+            var documentFragment = document.createDocumentFragment();
+            var navBar = document.getElementById('mainNavBar');
+            var predictCurrentNav = document.createElement('a');
+            predictCurrentNav.setAttribute('href', '#');
+            predictCurrentNav.classList.add('nav-link');
+            predictCurrentNav.classList.add('active');
+            predictCurrentNav.setAttribute('id','predictNav');
+            predictCurrentNav.innerText = "Prediction";
+            documentFragment.appendChild(predictCurrentNav);
+            var spacer = document.createElement('a');
+            spacer.setAttribute('href', '#');
+            spacer.classList.add('nav-link');
+            spacer.classList.add('active');
+            spacer.setAttribute('id','predictNav');
+            spacer.innerText = " ";
+            documentFragment.appendChild(spacer);
+            var uploadBtn = document.createElement('button');
+            uploadBtn.setAttribute('id', 'selectMusicButton');
+            uploadBtn.classList.add('btn');
+            uploadBtn.classList.add('btn-sm');
+            uploadBtn.classList.add('btn-secondary');
+            uploadBtn.setAttribute('onclick', 'handleFileUpload()');
+            var uploadBtnSpinner = document.createElement('span');
+            uploadBtnSpinner.classList.add('spinner-grow');
+            uploadBtnSpinner.classList.add('spinner-grow-sm');
+            uploadBtnSpinner.style.display = 'none';
+            uploadBtnSpinner.setAttribute('id','uploadInProgress');
+            uploadBtn.appendChild(uploadBtnSpinner);
+            var uploadBtnTxt = document.createElement('span');
+            uploadBtnTxt.innerText = 'Upload';
+            uploadBtn.appendChild(uploadBtnTxt);
+            documentFragment.appendChild(uploadBtn);
+            navBar.appendChild(documentFragment);
+        }
+        window.buildView();
+        window.genreML = {
+            "batchID": "{{ genre_ml_data['batch_id'] }}"
+        };
+        console.log("{{ genre_ml_data['batch_id'] }}");
+        window.genreML.viewData = JSON.parse(`{{ genre_ml_data['view_data']|tojson }}`);
+        window.getViewPredictions = view => {
+            view.clip_obtained = false;
+            view.get_clip = function(){
+                var origin = window.location.origin;
+                fetch(origin+'/getaclip')
+                .then(res=>res.json())
+                .then(data => {
+                    if(data.ready === true && data.sample !== null){
+                        var el = document.getElementById('predictionAudio');
+                        var audio = document.createElement('audio');
+                        audio.setAttribute('id','audioSample');
+                        audio.setAttribute('type','audio/wav');
+                        audio.setAttribute('src','data:audio/wav;base64,'+data.sample);
+                        audio.setAttribute('controls','controls');
+                        audio.setAttribute('seekable','seekable');
+                        el.appendChild(audio);
+                        el.appendChild(document.createElement('br'));
+                    }
+                });
+            };
+            view.predict_uids.forEach(prediction=>{
+                prediction.getPrediction = predict=>{
+                    var origin = window.location.origin;
+                    fetch(origin+'/getpredictionbyuid/'+predict.uid)
+                    .then(res=>res.json())
+                    .then(data => {
+                        //console.dir(data);
+                        if(data.ready === true){
+                            console.dir(data);
+                            predict.ready = true;
+                            predict.value = data.prediction.predictions.split('|');
+                            predict.response_data = data;
+                            document.getElementById("top5-chart").style.display = "block";
+                            document.getElementById("chartButton").style.display = "block";
+                            var labels = data.prediction.prediction_pairs.map(x=>x[0])
+                            var predictionScores = data.prediction.prediction_pairs.map(x=>x[1])
+                            var fullLabels = data.prediction.prediction_full_scores.map(x=>x[0])
+                            var fullPredictionScores = data.prediction.prediction_full_scores.map(x=>x[1])
+                            document.getElementById(data.uid).innerText = "Top 5: "+predict.value.join(" ");
+                            // basic chart js example from https://tobiasahlin.com/blog/chartjs-charts-to-get-you-started/
+                            predict.chart = new Chart(document.getElementById("top5-chart"), {
+                                type: 'horizontalBar',
+                                data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: "Genre Score",
+                                    backgroundColor: labels.map(x=>{x;return randomColor({luminosity: 'bright'});}),
+                                    data: predictionScores,
+                                }]},
+                                options: {
+                                    legend: { display: false },
+                                    title: {
+                                        display: true,
+                                        text: "Genre Score"
+                                    }
+                                }
+                            });
+                            predict.fullChart = new Chart(document.getElementById("all-genre-chart"), {
+                                type: 'horizontalBar',
+                                data: {
+                                labels: fullLabels,
+                                datasets: [{
+                                    label: "Genre Score",
+                                    backgroundColor: fullLabels.map(x=>{x;return randomColor({luminosity: 'bright'});}),
+                                    data: fullPredictionScores,
+                                }]},
+                                options: {
+                                    legend: { display: false },
+                                    title: {
+                                        display: true,
+                                        text: "Genre Score"
+                                    }
+                                }
+                            });
+                            try{
+                                if(view.clip_obtained === false){
+                                    view.get_clip();
+                                }
+                            }catch(e){
+                                console.dir(e);
+                            }
+                        }else{
+                            if (predict.trialCount < 5) {
+                                predict.trialCount++;
+                                predict.timeout = setTimeout(predict.getPrediction(predict), 200);
+                            }else{
+                                document.getElementById(predict.uid).innerText = "Network error, unable to get prediction.";
+                            }
+                        }
+                    });
+                };
+                if(prediction.ready !== true || prediction.value === ''){
+                    prediction.trialCount = 0;
+                    prediction.timeout = setTimeout(prediction.getPrediction(prediction, ), 100);
+                };
+                prediction.msg = view.msg;
+            });
+        };
+        window.genreML.viewData.forEach(view=>getViewPredictions(view));
+        window.getViewSpectrograms = view => {
+            view.spectro_uids.forEach(spectrogram=>{
+                spectrogram.getSpectrogram = spectro=>{
+                    var origin = window.location.origin;
+                    fetch(origin+'/getspectrogramsbyuid/'+spectro.uid)
+                    .then(res=>res.json())
+                    .then(data => {
+                        //console.dir(data);
+                        if(data.ready === true){
+                            spectro.ready = true;
+                            spectro.value = data;
+                            data.images.spectrograms.forEach(gram=>{
+                                var type = Object.keys(gram)[0];
+                                var val = gram[Object.keys(gram)[0]];
+                                document.getElementById(type+"_"+spectro.uid+"_title").innerText = type[0].toLocaleUpperCase()+type.substr(1,type.length-1);
+                                document.getElementById(type+"_"+spectro.uid+"_image").setAttribute('src',"data:image/png;base64,"+val.original_color);
+                                document.getElementById(type+"_"+spectro.uid).setAttribute('style','display:block');
+                            });
+                        }else{
+                            if (spectro.trialCount < 5) {
+                                spectro.trialCount++;
+                                spectro.timeout = setTimeout(spectro.getSpectrogram(spectro), 200);
+                            }else{
+                                var el = document.createElement('h4');
+                                el.innerText = "Network error, unable to get spectrograms.";
+                                document.getElementById("predictionRow").appendChild(el);
+                            }
+                        }
+                    });
+                };
+                if(spectrogram.ready !== true || spectrogram.value === ''){
+                    spectrogram.trialCount = 0;
+                    spectrogram.timeout = setTimeout(spectrogram.getSpectrogram(spectrogram), 100);
+                };
+            });
+        }
+        window.genreML.viewData.forEach(view=>getViewSpectrograms(view));
+        window.handleFileUpload = function(){
+            (document.getElementById("selectMusicToUpload")).click();
+            (document.getElementById("uploadInProgress")).style.display="inline-block";
+            setTimeout(function(){(document.getElementById("uploadInProgress")).style.display="inline-block";}, 120000);
+        };
+        window.chartButtonHandler = ()=>{
+            if(document.getElementById("all-genre-chart").style.display === "none"){
+                document.getElementById("chartButtonText").innerText = "Top 5 Genres Chart";
+                document.getElementById("all-genre-chart").style.display = "block";
+                document.getElementById("top5-chart").style.display = "none";
+                return;
+            }else{
+                if(document.getElementById("top5-chart").style.display === "none"){
+                    document.getElementById("chartButtonText").innerText = "All Genres Chart";
+                    document.getElementById("top5-chart").style.display = "block";
+                    document.getElementById("all-genre-chart").style.display = "none";
+                    return;
+                }
+            }
+        }
+    </script>
+    <main role="main" class="inner cover">
+        <div class="row">
+            <div class="col">
+                <br>
+                <h1>Predictions</h1>                
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <br>
+                <div id="predictionAudio"></div>                
+            </div>
+        </div>
+        <br>
+        {% for view in genre_ml_data['view_data'] %}
+            <div class="col">
+                <div class="lead">
+                    <div class="row">
+                        <h4><strong>Filename: </strong>{{ view['filename'] }}</h4>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <h4><strong>MD5: </strong>{{ view['md5'] }}</h4>
+                        <br>
+                    </div>
+                    {% for prediction in view['predict_uids'] %}
+                    <div class="row" id="predictionRow">
+                        <h4><strong id="{{prediction['uid']}}">{{view['msg']}}</strong></h4>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <span></span>
+                    </div>
+                    <div class="row">
+                        <canvas style="display:none" id="top5-chart" width="800" height="450"></canvas>
+                        <canvas style="display:none" id="all-genre-chart" width="800" height="450"></canvas>
+                        <br>
+                    </div>
+                    <div class="row">
+                        <button id="chartButton" style="display:none" class="btn btn-secondary btn-sm" onclick="chartButtonHandler()">
+                            <span id="chartButtonText">All Genres Chart</span>
+                        </button>
+                        <br>
+                    </div>
+                    {% endfor %}
+                    {% for spectro in view['spectro_uids'] %}
+                        {% for spectro_type in ['melspectrogram', 'chromagram', 'dbspectrogram'] %}
+                        <div class="row" id="{{spectro_type}}_{{spectro['uid']}}" style="display:none">
+                            <br>
+                            <h5 id="{{spectro_type}}_{{spectro['uid']}}_title">{{spectro_type}}</h5>
+                            <br>
+                            <img id="{{spectro_type}}_{{spectro['uid']}}_image" src="data:image/png;base64," alt=""/>
+                            <br>
+                        </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    </main>
+
+{% endblock content %}
