@@ -16,7 +16,7 @@ setup(
     version='0.3.4',
     install_requires=[
         'requests', 'pandas', 'numpy', 'tabulate', 'pydub', 'librosa', 'matplotlib', 'youtube_dl',
-        'tensorflow', 'sklearn'],
+        'tensorflow', 'scikit-learn==0.22.2.post1'],
     tests_require=['pytest', 'pytest-cov'],
     license="MIT",
     classifiers=[
