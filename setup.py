@@ -28,7 +28,7 @@ setup(
     name='genreml',
     python_requires='>=3.5',
     package_data={
-        'genreml': ['fma_data/*.mp3', 'model_resources/*']
+        'genreml': ['fma_data/*.mp3', 'model_resources/*', 'model/cnn/data/*']
     },
     entry_points={
         'console_scripts': [
